@@ -1,7 +1,17 @@
+/**
+ * @author Aras Bazyan
+ * 
+ * Class that communicates to Raspberry Pi over MQTT
+ * 
+ */
+
 package mqtt;
 import java.util.*;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.*;
+
+// url for Paho Client libraries in JAR: 
+//https://repo.eclipse.org/content/repositories/paho/org/eclipse/paho/org.eclipse.paho.client.mqttv3/1.0.2/org.eclipse.paho.client.mqttv3-1.0.2.jar
 
 public class Client {
 
