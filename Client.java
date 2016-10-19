@@ -12,12 +12,13 @@ public class Client {
         String clientId     = "Aras";
         MemoryPersistence persistence = new MemoryPersistence();
         Scanner enterTopic = new Scanner(System.in);
- 
+
+ 	while(true) {
            System.out.println("Enter topic name: ");
            String topic = enterTopic.nextLine();
            System.out.println("Enter message: ");
            String data = enterTopic.nextLine();
-           enterTopic.close();
+           //enterTopic.close();
            
         try {
             MqttClient sampleClient = new MqttClient(broker, clientId, persistence);
@@ -42,6 +43,6 @@ public class Client {
             System.out.println("excep "+me);
             me.printStackTrace();
         }
-        
+        }
    }
    }
