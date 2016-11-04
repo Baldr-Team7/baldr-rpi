@@ -1,0 +1,13 @@
+#! /bin/bash
+
+mosquitto_pub -t "home/FF/Light/FF" -h tann.si -p 8883 -m "{\"version\": 1, \"protocolName\": \"baldr\", \"lightCommand\" : { \"clientToken\": \"FFFFFFFFFFFFFFF\", \"state\":\"on\", \"color\":\"#FF0000\"}}"
+sleep 1
+mosquitto_pub -t "home/FF/Light/FF" -h tann.si -p 8883 -m "{\"version\": 1, \"protocolName\": \"baldr\", \"lightCommand\" : { \"clientToken\": \"FFFFFFFFFFFFFFF\", \"state\":\"on\", \"color\":\"#00FF00\"}}"
+sleep 1
+mosquitto_pub -t "home/FF/Light/FF" -h tann.si -p 8883 -m "{\"version\": 1, \"protocolName\": \"baldr\", \"lightCommand\" : { \"clientToken\": \"FFFFFFFFFFFFFFF\", \"state\":\"on\", \"color\":\"#0000FF\"}}"
+sleep 1
+mosquitto_pub -t "home/FF/Light/FF" -h tann.si -p 8883 -m "{\"version\": 1, \"protocolName\": \"baldr\", \"lightCommand\" : { \"clientToken\": \"FFFFFFFFFFFFFFF\", \"state\":\"on\", \"color\":\"#FFFF00\"}}"
+sleep 1
+mosquitto_pub -t "home/FF/Light/FF" -h tann.si -p 8883 -m "{\"version\": 1, \"protocolName\": \"baldr\", \"lightCommand\" : { \"clientToken\": \"FFFFFFFFFFFFFFF\", \"state\":\"on\", \"color\":\"#FFFFFF\"}}"
+sleep 1
+mosquitto_pub -t "home/FF/Light/FF" -h tann.si -p 8883 -m "{\"version\": 1, \"protocolName\": \"baldr\", \"lightCommand\" : { \"clientToken\": \"FFFFFFFFFFFFFFF\", \"state\":\"on\", \"color\":\"#000000\"}}"
