@@ -19,7 +19,7 @@ serve(Pins) ->
 		{gpio_set, Pid, Color} -> 
 			write(Pins, Color),
 			Pid ! {gpio_set_r, self()},
-			serve(Pins)
+			serve(Pins);
 	end.
 
 write(Pins, false) -> 
@@ -54,4 +54,6 @@ set(Pid, true)  ->
 set(Pid, Color) -> 
 	io:format("Setting GPIO~n", []),
 	Pid ! {gpio_set, self(), colorOneOrZero(Color)}.
-	%receive {gpio_set_r, Pid} -> ok end.
+	receive {gpio_set_r, Pid} -> ok end.
+
+off()

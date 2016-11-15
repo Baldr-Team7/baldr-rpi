@@ -1,0 +1,12 @@
+{
+  "SublimeLinter": {
+    "linters": {
+      "erlc": {
+        "args": "-o ../ebin/",
+        "include_dirs": [
+          "../deps/*/ebin"
+        ]
+      }
+    }
+  }
+}
