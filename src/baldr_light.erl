@@ -1,12 +1,16 @@
 -module(baldr_light).
--export([start/1, stop/1, set/2]).
+-export([ start/0, stop/1, set/2]).
 
-start(Args) ->
+start() ->
+	Args = [],
 	MqttHost = proplists:get_value(mqtt_host, Args, "tann.si"),
 	MqttPort = proplists:get_value(mqtt_port, Args, 8883),
-	MsgPid = baldr_message_handler:start([{host, MqttHost}, {port, MqttPort}]),
+
+	HomeID = proplists:get_value(home_id, Args, "asdf"),
+	LightID = proplists:get_value(light_id, Args, "1f3eaa55-2117-415b-a1fd-607c319473ff"),
+
+	MsgPid = baldr_message_handler:start_link({host, MqttHost}, {port, MqttPort}, {home_id, HomeID}, {light_id, LightID}),
 	LedPid = baldr_led_gpio:start_link(),
-	LightId = proplists:get_value(light_id, Args),
 	
 	State = off,
 	Color = proplists:get_value(color, Args, {color, 255, 255, 255}),
@@ -17,7 +21,7 @@ start(Args) ->
 		{color, Color},
 		{room, Room},
 		{state, State},
-		{id, LightId}
+		{id, LightID}
 	},
 
 	serve(MsgPid, LedPid, Info),	

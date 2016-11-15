@@ -3,4 +3,4 @@
 # -*- tab-width:4;indent-tabs-mode:nil -*-
 # ex: ts=4 sw=4 et
 
-erl -pa ebin -pa deps/*/ebin -s baldr_message_handler
+erl -pa ebin -pa deps/*/ebin -s baldr_light
