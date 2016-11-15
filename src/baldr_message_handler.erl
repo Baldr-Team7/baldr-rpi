@@ -40,9 +40,9 @@ serve({emqtt, C}, {hw_controller, HW}, Home, RoomTopic) ->
 
 		{baldr_mh_set_room, Pid, R} ->
 			emqttc:unsubscribe(C, RoomTopic),
-			New_room_topic = room_topic(R);
+			New_room_topic = room_topic(Home, R),
 			emqttc:subscribe(C, New_room_topic),
-			serve({emqtt, C}, {hw_controller, HW}, Home, New_room_topic)
+			serve({emqtt, C}, {hw_controller, HW}, Home, New_room_topic);
 
 		{baldr_mh_stop, Pid} -> 
 			Pid ! {baldr_mh_stop_r, self()}

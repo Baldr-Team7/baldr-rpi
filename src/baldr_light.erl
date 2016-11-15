@@ -29,6 +29,7 @@ serve(MsgPid, LedPid, Info) ->
 			% Get color if set else use old
 			Color = prop_get_fallback(color, SArgs, Info),
 			State = prop_get_fallback(state, SArgs, Info),
+			LightId = proplists:get_value(light_id, Info),
 
 			case State of
 				off 	-> baldr_led_gpio:set(false);
@@ -39,15 +40,22 @@ serve(MsgPid, LedPid, Info) ->
 			SRoom = proplists:get_value(room, SArgs),
 			LRoom = proplists:get_value(room, Info),
 
-			case SRoom === LRoom of
-				false -> baldr_message_handler:set_room(R);
+			case SRoom == LRoom of
+				false -> baldr_message_handler:set_room(SRoom);
 				true -> void
 			end,
 
 
+			Info = {
+					{color, Color},
+					{room, SRoom},
+					{state, State},
+					{id, LightId}
+				},
+
 			% Respond
 			Pid ! {baldr_light_set_r, self()},
-			serve(MsgPid, LedPid, LightId, Info);
+			serve(MsgPid, LedPid, Info);
 
 		{baldr_light_stop, Pid} -> 
 			Pid ! {baldr_light_stop_r, self()}
@@ -65,7 +73,6 @@ replaceProp(K, V, L) -> [ {K, V} | proplists:delete(K, L)].
 
 replaceProps([], L) -> L;
 replaceProps([{K, V} | T], L) -> replaceProps(T, replaceProp(K, V, L)).
-
 
 stop(Pid) -> 
 	Pid ! {baldr_light_stop, self()},
