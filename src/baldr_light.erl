@@ -1,5 +1,12 @@
 -module(baldr_light).
--export([ start/0, stop/1, set/2]).
+-export([ start/0, stop/1, set/2, hey/0,test_handler/0]).
+
+hey() -> hey.
+
+test_handler() ->
+receive
+	_ -> heyy, test_handler()
+end.
 
 start() ->
 	Args = [],
