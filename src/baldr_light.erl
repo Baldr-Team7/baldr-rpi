@@ -2,71 +2,82 @@
 -export([ start/0, stop/1, set/2]).
 
 start() ->
-	Args = [],
+	Args 	 = [],
 	MqttHost = proplists:get_value(mqtt_host, Args, "tann.si"),
 	MqttPort = proplists:get_value(mqtt_port, Args, 8883),
 
-	HomeID = proplists:get_value(home_id, Args, "asdf"),
-	LightID = proplists:get_value(light_id, Args, "1f3eaa55-2117-415b-a1fd-607c319473ff"),
-
-	MsgPid = baldr_message_handler:start_link({host, MqttHost}, {port, MqttPort}, {home_id, HomeID}, {light_id, LightID}),
-	LedPid = baldr_led_gpio:start_link(),
+	HomeID 	= proplists:get_value(home_id, Args, "asdf"),
+	LightID = proplists:get_value(light_id, Args, "1"),
+	MsgPid 	= baldr_message_handler:start_link({host, MqttHost}, {port, MqttPort}, {light_controller, self()}, {home_id, HomeID}, {light_id, LightID}),
 	
-	State = off,
-	Color = proplists:get_value(color, Args, {color, 255, 255, 255}),
-	Room = undefined,
+	LampMode = text,
 
+	case LampMode of
+		text -> 
+			io:format("NOTE: Running lamp in text mode"), 
+			LedPid = baldr_lamp:start_link({type, text});
+		gpio -> 
+			io:format("NOTE: Running lamp in gpio mode"),
+			LedPid = baldr_lamp:start_link({type, gpio}, [{pins, 17, 22, 27}])
+	end,
 
-	Info = {
+	State 	= off,
+	Color 	= proplists:get_value(color, Args, {color, 255, 255, 255}),
+	Room 	= undefined,
+
+	LightState 	= [
 		{color, Color},
 		{room, Room},
 		{state, State},
-		{id, LightID}
-	},
+		{light_id, LightID}
+	],
 
-	serve(MsgPid, LedPid, Info),	
-	ok.
+	LightPid = spawn_link(fun()->serve(MsgPid, LedPid, LightState) end),
+	baldr_message_handler:update_info(MsgPid, LightState),
+	LightPid.
 
-serve(MsgPid, LedPid, Info) ->
+serve(MsgPid, LedPid, LightState) ->
 	receive
-		{baldr_light_set, Pid, SArgs} ->
+		{baldr_light_set, Pid, SetArgs} ->
 			% Get color if set else use old
-			Color = prop_get_fallback(color, SArgs, Info),
-			State = prop_get_fallback(state, SArgs, Info),
-			LightId = proplists:get_value(light_id, Info),
+			Color = prop_get_fallback(color, SetArgs, LightState),
+			State = prop_get_fallback(state, SetArgs, LightState),
+			LightId = proplists:get_value(light_id, LightState),
 
 			case State of
-				off 	-> baldr_led_gpio:set(false);
-				on  	-> baldr_led_gpio:set(Color);
+				off 	-> baldr_bulb:set(false);
+				on  	-> baldr_bulb:set(Color);
 				_ 		-> ok
 			end,
 
-			SRoom = proplists:get_value(room, SArgs),
-			LRoom = proplists:get_value(room, Info),
+			SRoom = proplists:get_value(room, SetArgs),
+			LRoom = proplists:get_value(room, LightState),
 
 			case SRoom == LRoom of
-				false -> baldr_message_handler:set_room(SRoom);
+				false -> baldr_message_handler:set_room(MsgPid, SRoom);
 				true -> void
 			end,
 
 
-			Info = {
+			LightState = [
 					{color, Color},
 					{room, SRoom},
 					{state, State},
 					{id, LightId}
-				},
+				],
+
+			baldr_message_handler:update_info(MsgPid, LightState),
 
 			% Respond
 			Pid ! {baldr_light_set_r, self()},
-			serve(MsgPid, LedPid, Info);
+			serve(MsgPid, LedPid, LightState);
 
 		{baldr_light_stop, Pid} -> 
 			Pid ! {baldr_light_stop_r, self()}
 
 	end.
 
-change_room(R) -> baldr_message_handler:set_room(R).
+change_room(MsgPid, R) -> baldr_message_handler:set_room(MsgPid, R).
 
 prop_get_fallback(K, L, F) -> proplists:get_value(K, L, proplists:get_value(K, F)).
 			

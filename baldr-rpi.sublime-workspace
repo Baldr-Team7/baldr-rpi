@@ -4,6 +4,70 @@
 		"selected_items":
 		[
 			[
+				"bin",
+				"binary_to_list"
+			],
+			[
+				"hex",
+				"hex_to_color"
+			],
+			[
+				"list",
+				"list_to_binary"
+			],
+			[
+				"dec",
+				"dec_to_hex"
+			],
+			[
+				"in",
+				"integer_to_list"
+			],
+			[
+				"Ligh",
+				"LightState"
+			],
+			[
+				"Light",
+				"LightPid"
+			],
+			[
+				"B",
+				"baldr_message_handler"
+			],
+			[
+				"Li",
+				"LightTopic"
+			],
+			[
+				"ligh",
+				"light_info_to_baldr_json"
+			],
+			[
+				"Info",
+				"InfoEJSON"
+			],
+			[
+				"po",
+				"proplists"
+			],
+			[
+				"emqtt",
+				"emqttc"
+			],
+			[
+				"bald",
+				"baldr_mh_update_info_r"
+			],
+			[
+				"set",
+				"set_room"
+			],
+			[
+				"bal",
+				"baldr_mh_update_info"
+			],
+			[
 				"ba",
 				"baldr_light"
 			],
@@ -22,10 +86,6 @@
 			[
 				"ex",
 				"export\t-export"
-			],
-			[
-				"bal",
-				"baldr_mh_stop"
 			],
 			[
 				"H",
@@ -116,10 +176,6 @@
 				"digitize"
 			],
 			[
-				"list",
-				"list_skip"
-			],
-			[
 				"tre",
 				"tree_leaf"
 			],
@@ -184,69 +240,36 @@
 	"buffers":
 	[
 		{
-			"file": "config/config.erl",
-			"settings":
-			{
-				"buffer_size": 268,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
 			"file": "src/baldr_light.erl",
 			"settings":
 			{
-				"buffer_size": 950,
+				"buffer_size": 2411,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"contents": "-module(baldr_led_gpio).\n\n-export([start_link/1, set/2]).\n\nstart_link({pins, R, G, B}) ->\n\tio:format(\"Starting red~n\", []),\n\t{ok, Rpin} = gpio:start_link(R, output),\n\tio:format(\"Starting green~n\", []),\n\t{ok, Gpin} = gpio:start_link(G, output),\n\tio:format(\"Starting blue~n\", []),\n\t{ok, Bpin} = gpio:start_link(B, output),\n\tio:format(\"Serving~n\", []),\n\tPid = spawn_link(fun() -> serve({pins, Rpin, Gpin, Bpin}) end),\n\t{ok, Pid}.\n\nserve(Pins) ->\n\tio:format(\"Waiting for gpio_set~n\", []), \n\treceive \n\t\t{gpio_set, Pid, Color} -> \n\t\t\twrite(Pins, Color),\n\t\t\tPid ! {gpio_set_r, self()},\n\t\t\tserve(Pins)\n\tend.\n\nwrite(Pins, false) -> \n\twrite(Pins, {color, 0, 0, 0});\nwrite({pins, Rpid, Gpid, Bpid}, {color, R, G, B}) -> \n\tio:format(\"Setting Color ~p ~p ~n\", [{color, R, G, B}, {pins, Rpid, Gpid, Bpid}]),\n\tgpio:write(Rpid, R),\n\tgpio:write(Gpid, G),\n\tgpio:write(Bpid, B),\n\tio:format(\"Done~n\", []).\n\ncolorOneOrZero({color, R, G, B}) ->\n\tif\n\t\tR == 0 -> NR = 0;\n\t\ttrue -> NR = 1\n\tend,\n\tif\n\t\tG == 0 -> NG = 0;\n\t\ttrue -> NG = 1\n\tend,\n\tif\n\t\tB == 0 -> NB = 0;\n\t\ttrue -> NB = 1\n\tend,\n\t{color, NR, NG, NB}.\n\n\nset(Pid, false) -> \n\tset(Pid, {color, 0, 0, 0});\nset(Pid, true)  -> \n\tset(Pid, {color, 255, 255, 255});\nset(Pid, Color) -> \n\tio:format(\"Setting GPIO~n\", []),\n\tPid ! {gpio_set, self(), colorOneOrZero(Color)},\n\treceive {gpio_set_r, Pid} -> ok end.",
 			"file": "src/baldr_led_gpio.erl",
-			"file_size": 1341,
-			"file_write_time": 131232908537265440,
 			"settings":
 			{
-				"buffer_size": 1333,
-				"encoding": "UTF-8",
+				"buffer_size": 1334,
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"contents": "-module(baldr_message_handler).\n\n-export([start_link/2]).\n\nstart_link({host, Host}, {port, Port}) ->\n\t%% connect to broker\n\t{ok, C} = emqttc:start_link([{host, Host}, {port, Port}, {client_id, <<\"simpleClient\">>}]),\n\tio:format(\"Started EMQTTC~n\", []),\n\temqttc:subscribe(C, <<\"home/FF/Light/FF\">>, qos0),\n\tio:format(\"Subscribed to baldr-test~n\", []),\n\t{ok, HW} = baldr_led_gpio:start_link({pins, 27, 17, 22}),\n\tio:format(\"Started baldr_led_gpio~n\", []),\n\tio:format(\"Serving~n\", []),\n\tserve({emqtt, C}, {hw_controller, HW}).\n\nserve({emqtt, C}, {hw_controller, HW}) ->\n\t%% receive message\n\tio:format(\"Waiting for message~n\", []),\n\treceive\n\t\t{publish, Topic, Payload} ->\n\t\t\temqttc:publish(C, <<\"baldr-log\">>, list_to_binary([ \"Received message from \", Topic, \" : \", Payload])), \n\t\t\tio:format(\"Message Received from ~s: ~s~n\", [Topic, Payload]),\n\t\t\t\n\t\t\t{Message} = jiffy:decode(Payload),\n\t\t\tio:format(\"Message ~p~n\", [Message]),\n\t\t\tio:format(\"~s~n\", [ proplists:get_value(<<\"protocolName\">>, Message)]),\n\t\t\t\n\t\t\tcase proplists:get_value(<<\"protocolName\">>, Message) of\n\t\t\t\t<<\"baldr\">> -> executeCommand( proplists:lookup(<<\"lightCommand\">>, Message), {hw_controller, HW});\n\t\t\t\t_ -> default\n\t\t\tend,\n\t\t\t\n\t\t\tserve({emqtt, C}, {hw_controller, HW});\n\t\t{baldr_mh_stop, Pid} -> \n\t\t\tPid ! {baldr_mh_stop_r, self()}\n\tend.\n\nexecuteCommand({<<\"lightCommand\">>, {Commands}}, {hw_controller, HW}) -> \n\tState = proplists:get_value(<<\"state\">>, Commands, <<\"on\">>),\n\tColor = proplists:get_value(<<\"color\">>, Commands, <<\"#FFFFFF\">>),\n\n\tcase State of\n\t\t<<\"on\">> -> baldr_led_gpio:set(HW, colorFromHex(Color));\n\t\t<<\"off\">> -> baldr_led_gpio:set(HW, false)\n\tend.\n\ncolorFromHex(<<\"#\", R:2/binary, G:2/binary, B:2/binary>>) -> \n\t{color, decFromHexBin(R), decFromHexBin(G), decFromHexBin(B)}.\ndecFromHexBin(H) -> \n\t{ok, [V], []} = io_lib:fread(\"~16u\", binary_to_list(H)), \n\tV.",
 			"file": "src/baldr_message_handler.erl",
-			"file_size": 1848,
-			"file_write_time": 131232896413542989,
 			"settings":
 			{
-				"buffer_size": 1849,
+				"buffer_size": 3686,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "README.md",
+			"file": "deploy.sh",
 			"settings":
 			{
-				"buffer_size": 73,
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "baldr-rpi.sublime-project",
-			"settings":
-			{
-				"buffer_size": 189,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "/home/jpp/.config/sublime-text-3/Packages/User/SublimeLinter.sublime-settings",
-			"settings":
-			{
-				"buffer_size": 1448,
+				"buffer_size": 166,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -259,17 +282,29 @@
 	"build_varint": "",
 	"command_palette":
 	{
-		"height": 392.0,
-		"last_filter": "",
+		"height": 212.0,
+		"last_filter": "json",
 		"selected_items":
 		[
 			[
-				"",
-				"Package Control: Remove Package"
+				"json",
+				"Pretty JSON: Format (Pretty Print) JSON"
+			],
+			[
+				"list packa",
+				"Package Control: List Packages"
 			],
 			[
 				"install",
 				"Package Control: Install Package"
+			],
+			[
+				"packa",
+				"Package Control: Install Package"
+			],
+			[
+				"",
+				"Erlyman: Context search"
 			],
 			[
 				"pref",
@@ -316,19 +351,11 @@
 				"Package Control: Add Repository"
 			],
 			[
-				"json",
-				"Pretty JSON: Format (Pretty Print) JSON"
-			],
-			[
 				"pac",
 				"Package Control: Install Package"
 			],
 			[
 				"package",
-				"Preferences: Browse Packages"
-			],
-			[
-				"packa",
 				"Preferences: Browse Packages"
 			],
 			[
@@ -400,14 +427,21 @@
 	[
 		"/home/jpp/projects/erlang/baldr-rpi",
 		"/home/jpp/projects/erlang/baldr-rpi/config",
-		"/home/jpp/projects/erlang/baldr-rpi/ebin",
+		"/home/jpp/projects/erlang/baldr-rpi/deps/emqttc",
 		"/home/jpp/projects/erlang/baldr-rpi/src"
 	],
 	"file_history":
 	[
-		"/home/jpp/projects/erlang/baldr-rpi/ebin/led_control.beam",
-		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_message_handler.beam",
+		"/home/jpp/midran/validex/why-error/1/test.xml",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_led_gpio.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_message_handler.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_light.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/config/config.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/baldr-rpi.sublime-project",
 		"/home/jpp/.config/sublime-text-3/Packages/User/SublimeLinter.sublime-settings",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_message_handler.beam",
+		"/home/jpp/projects/erlang/baldr-rpi/README.md",
+		"/home/jpp/projects/erlang/baldr-rpi/ebin/led_control.beam",
 		"/home/jpp/projects/webstorm/pidash/js/main.js",
 		"/home/jpp/midran/validex/sbdh-test/sbdh_test_confidential-5-fix.xml",
 		"/home/jpp/midran/validex/sbdh-test/b64-sbdh_test_confidential-5.txt",
@@ -525,18 +559,11 @@
 		"/home/jpp/decodetest.php",
 		"/home/jpp/svn/code/carmen/doc/map_format.tex",
 		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/src/main/java/org/bytedeco/javacpp/gridfastslam.java",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/scanmatcher/smmap.h",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/grid/map.h",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/grid/harray2d.h",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/utils/point.h",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/gui/gsp_thread.h",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/gridfastslam/motionmodel.h",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/gui/gfs_simplegui.cpp",
-		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/gui/gfs_logplayer.cpp"
+		"/home/jpp/projects/java/javacpp-presets-isolated/gmapping/cppbuild/linux-x86_64/scanmatcher/smmap.h"
 	],
 	"find":
 	{
-		"height": 21.0
+		"height": 36.0
 	},
 	"find_in_files":
 	{
@@ -551,6 +578,12 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"decFromHexBin",
+			"colorFromHex",
+			"\\\"",
+			"New_room_topic",
+			"publish",
+			")}\n",
 			"allowan",
 			"[“”]",
 			"”",
@@ -665,9 +698,13 @@
 		"highlight": true,
 		"in_selection": false,
 		"preserve_case": false,
-		"regex": true,
+		"regex": false,
 		"replace_history":
 		[
+			"hex_to_dec",
+			"hex_to_color",
+			"\"",
+			"NewRoomTopic",
 			"\"",
 			"/Light",
 			"",
@@ -696,29 +733,28 @@
 	"groups":
 	[
 		{
-			"selected": 3,
+			"selected": 0,
 			"sheets":
 			[
 				{
 					"buffer": 0,
-					"file": "config/config.erl",
+					"file": "src/baldr_light.erl",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 268,
+						"buffer_size": 2411,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								268,
-								268
+								1149,
+								1149
 							]
 						],
 						"settings":
 						{
-							"auto_name": "",
 							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage",
 							"translate_tabs_to_spaces": false
 						},
@@ -726,24 +762,53 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 6,
+					"stack_index": 0,
 					"type": "text"
 				},
 				{
 					"buffer": 1,
-					"file": "src/baldr_light.erl",
+					"file": "src/baldr_led_gpio.erl",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 950,
+						"buffer_size": 1334,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								862,
-								862
+								1334,
+								1334
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 624.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "src/baldr_message_handler.erl",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3686,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1007,
+								1007
 							]
 						],
 						"settings":
@@ -759,148 +824,31 @@
 					"type": "text"
 				},
 				{
-					"buffer": 2,
-					"file": "src/baldr_led_gpio.erl",
+					"buffer": 3,
+					"file": "deploy.sh",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 1333,
+						"buffer_size": 166,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								1040,
-								1040
+								166,
+								166
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage",
-							"translate_tabs_to_spaces": false
+							"syntax": "Packages/ShellScript/Shell-Unix-Generic.sublime-syntax"
 						},
 						"translation.x": 0.0,
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 1,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "src/baldr_message_handler.erl",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1849,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1528,
-								1528
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage",
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 331.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 0,
-					"type": "text"
-				},
-				{
-					"buffer": 4,
-					"file": "README.md",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 73,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								0,
-								0
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Markdown/Markdown.sublime-syntax"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 5,
-					"type": "text"
-				},
-				{
-					"buffer": 5,
-					"file": "baldr-rpi.sublime-project",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 189,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								132,
-								132
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/JavaScript/JSON.sublime-syntax",
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 6,
-					"file": "/home/jpp/.config/sublime-text-3/Packages/User/SublimeLinter.sublime-settings",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1448,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								0,
-								0
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/JavaScript/JSON.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 4,
 					"type": "text"
 				}
 			]
@@ -953,7 +901,7 @@
 	"project": "baldr-rpi.sublime-project",
 	"replace":
 	{
-		"height": 38.0
+		"height": 64.0
 	},
 	"save_all_on_build": true,
 	"select_file":
