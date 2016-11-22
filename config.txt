@@ -1,5 +1,5 @@
-{discoveryCode,"AAAAAAAA"},
-{home, "f343338c-c3bf-4b36-a711-720a2b8353d2"},
+{discoveryCode,"AAAAAAAA"}.
+{home, "f343338c-c3bf-4b36-a711-720a2b8353d2"}.
 {lights,
 	[
 		{light,

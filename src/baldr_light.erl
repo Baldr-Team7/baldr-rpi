@@ -9,6 +9,10 @@ receive
 end.
 
 start() ->
+	Config = load_configuration(),
+	io:format("~p~n", [Config]),
+	save_configuration(Config),
+
 	Args 	 = [],
 	MqttHost = proplists:get_value(mqtt_host, Args, "tann.si"),
 	MqttPort = proplists:get_value(mqtt_port, Args, 8883),
@@ -103,3 +107,18 @@ stop(Pid) ->
 set(Pid, Args) ->
 	Pid ! {baldr_light_set, self(), Args},
 	receive	{baldr_light_set_r, Pid} -> ok end.
+
+save_configuration(L) -> 
+	Filename = "consfig.txt",
+	
+	file:write_file(
+		Filename, 
+		lists:map(
+			fun(Term) -> 
+				io_lib:format("~tp.~n", [Term]) 
+			end, L), 
+		[{encoding, utf8}]).
+
+load_configuration() -> 
+	{ok, Terms} = file:consult("config.txt"),
+	Terms.
