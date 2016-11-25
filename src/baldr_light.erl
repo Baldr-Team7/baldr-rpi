@@ -26,10 +26,10 @@ start() ->
 	case LampMode of
 		text -> 
 			io:format("NOTE: Running lamp in text mode"), 
-			LedPid = baldr_lamp:start_link({type, text});
+			{ok, LedPid} = baldr_lamp:start_link({type, text});
 		gpio -> 
 			io:format("NOTE: Running lamp in gpio mode"),
-			LedPid = baldr_lamp:start_link({type, gpio}, [{pins, 17, 22, 27}])
+			{ok, LedPid} = baldr_lamp:start_link({type, gpio}, [{pins, 17, 22, 27}])
 	end,
 
 	State 	= off,
@@ -43,54 +43,65 @@ start() ->
 		{light_id, LightID}
 	],
 
-	LightPid = spawn_link(fun()->serve(MsgPid, LedPid, LightState) end),
-	baldr_message_handler:update_info(MsgPid, LightState),
-	LightPid.
+	serve(MsgPid, LedPid, LightState).
 
 serve(MsgPid, LedPid, LightState) ->
+	io:format("Light waiting for command ~p~n", [self()]),
 	receive
 		{baldr_light_set, Pid, SetArgs} ->
-			% Get color if set else use old
-			Color = prop_get_fallback(color, SetArgs, LightState),
-			State = prop_get_fallback(state, SetArgs, LightState),
-			LightId = proplists:get_value(light_id, LightState),
+			io:format("Setting ~p~n", [{MsgPid, LedPid, LightState}]),
 
-			case State of
-				off 	-> baldr_bulb:set(false);
-				on  	-> baldr_bulb:set(Color);
-				_ 		-> ok
+			{ColorChanged, Color} = prop_get_fallback(color, SetArgs, LightState),
+			{StateChanged, State} = prop_get_fallback(state, SetArgs, LightState),
+
+			io:format("Setting ~p~n", [{{"Color", {ColorChanged, Color}}, {"State", {StateChanged, State}}}]),
+
+			case (ColorChanged or StateChanged) of 
+				true ->
+					case State of
+							off -> baldr_lamp:set(LedPid, false), off;
+							on  -> baldr_lamp:set(LedPid, Color), off;
+							_   -> void
+					end;
+				_ -> void
+			end,
+			{RoomChanged, Room}   = prop_get_fallback(room, SetArgs, LightState),
+
+			io:format("Setting ~p~n", [{{"Room", {RoomChanged, Room}}}]),
+
+			case RoomChanged of
+				true -> baldr_message_handler:set_room_topic(MsgPid, Room);
+				_ -> void
 			end,
 
-			SRoom = proplists:get_value(room, SetArgs),
-			LRoom = proplists:get_value(room, LightState),
-
-			case SRoom == LRoom of
-				false -> baldr_message_handler:set_room(MsgPid, SRoom);
-				true -> void
-			end,
-
-
-			LightState = [
+			NewState = [
 					{color, Color},
-					{room, SRoom},
+					{room, Room},
 					{state, State},
-					{id, LightId}
+					{id, proplists:get_value(light_id, LightState)}
 				],
 
-			baldr_message_handler:update_info(MsgPid, LightState),
+			io:format("Updating ~p~n", [{MsgPid, NewState}]),
+
+			baldr_message_handler:update_info(MsgPid, NewState),
 
 			% Respond
+
+			io:format("Done settign"),
 			Pid ! {baldr_light_set_r, self()},
-			serve(MsgPid, LedPid, LightState);
+			serve(MsgPid, LedPid, NewState);
 
-		{baldr_light_stop, Pid} -> 
-			Pid ! {baldr_light_stop_r, self()}
-
+		{baldr_light_stop, Pid} -> Pid ! {baldr_light_stop_r, self()};
+		M -> io:format("Message ~p~n", [M]), serve(MsgPid, LedPid, LightState)
 	end.
 
-change_room(MsgPid, R) -> baldr_message_handler:set_room(MsgPid, R).
-
-prop_get_fallback(K, L, F) -> proplists:get_value(K, L, proplists:get_value(K, F)).
+prop_get_fallback(K, L, F) -> 
+	
+	io:format("Getting ~p~n", [{K, L, F}]),
+	case proplists:get_value(K, L) of 
+		undefined 	-> {false, proplists:get_value(K, F)};
+		V 			-> {true, V}
+	end.
 			
 replaceProp({K, V}, L) -> replaceProp(K, V, L).
 
@@ -105,6 +116,7 @@ stop(Pid) ->
 	receive {baldr_light_stop_r, Pid} -> ok end.
 
 set(Pid, Args) ->
+	io:format("Setting ~p ~n", [{Pid, Args}]),
 	Pid ! {baldr_light_set, self(), Args},
 	receive	{baldr_light_set_r, Pid} -> ok end.
 

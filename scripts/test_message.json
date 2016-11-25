@@ -1,0 +1,9 @@
+{
+	"protocolName":"baldr",
+	"version":1,
+	"lightCommand":{
+		"state":"on",
+		"color":"#0FF0FF",
+		"room":"Kitchen"
+	}
+}

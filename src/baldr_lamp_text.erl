@@ -10,5 +10,6 @@ serve() ->
 	receive 
 		{lamp_set, Pid, Color} -> 
 			io:format("Color set to ~p~n", [Color]),
-			Pid ! {lamp_set_r, self()}
+			Pid ! {lamp_set_r, self()},
+			serve()
 	end. 
