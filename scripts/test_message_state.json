@@ -1,0 +1,7 @@
+{
+	"protocolName":"baldr",
+	"version":1,
+	"lightCommand":{
+		"state":"off",
+	}
+}

@@ -40,7 +40,7 @@ start() ->
 		{color, Color},
 		{room, Room},
 		{state, State},
-		{light_id, LightID}
+		{id, LightID}
 	],
 
 	serve(MsgPid, LedPid, LightState).
@@ -78,7 +78,7 @@ serve(MsgPid, LedPid, LightState) ->
 					{color, Color},
 					{room, Room},
 					{state, State},
-					{id, proplists:get_value(light_id, LightState)}
+					{id, proplists:get_value(id, LightState)}
 				],
 
 			io:format("Updating ~p~n", [{MsgPid, NewState}]),
