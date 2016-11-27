@@ -2,8 +2,26 @@
 
 LIGHT_ID=1
 HOME_ID=asdf
+WAIT=0
 publish_path(){
-	mosquitto_pub -h tann.si -p 8883 -t lightcontrol/home/$HOME_ID/light/$LIGHT_ID/commands -f $1	
+	TOPIC=lightcontrol/home/$HOME_ID/light/$LIGHT_ID/commands
+	echo $'\n\nSending\n\n'
+	echo "Topic: "$TOPIC
+	echo $'Message:\n'
+	cat $1
+
+	mosquitto_pub -h tann.si -p 8883 -t $TOPIC -f $1	
+
+
+	echo $'\n\nDone.'
+
+	if [ $WAIT == 1 ] 
+		then
+			echo 'Enter to continue...'
+			read 
+		else
+			sleep 1
+	fi
 }
 
 clear
@@ -56,9 +74,5 @@ while true; do
 		break 2
 		;;
 	esac
-
-
-	echo $'\n\nDone.'
-	sleep 1
 	clear
 done
