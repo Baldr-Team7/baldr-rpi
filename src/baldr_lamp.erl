@@ -12,6 +12,5 @@ set(Pid, false) ->
 set(Pid, true)  -> 
 	set(Pid, {color, 255, 255, 255});
 set(Pid, Color) -> 
-	io:format("Setting GPIO~n", []),
 	Pid ! {lamp_set, self(), Color},
 	receive {lamp_set_r, Pid} -> ok end.

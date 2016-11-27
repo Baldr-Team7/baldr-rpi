@@ -9,9 +9,6 @@ light_command_topic(H, L)-> list_to_binary([light_topic(H,L), <<"/commands">>]).
 
 start_link({host, Host}, {port, Port}, {light_controller, LightPid}, {home_id, HomeID}, {light_id, LightID}) ->
 	%% connect to broker
-	
-	io:format("Host:~p~n Port:~p~n LightPid:~p~n HomeID:~p~n LightId:~p~n", [Host, Port, LightPid, HomeID, LightID]),
-	
 	RoomTopic  = undefined,
 	LightInfoTopic = light_info_topic(HomeID, LightID),
 	LightCommandTopic = light_command_topic(HomeID, LightID),
@@ -23,21 +20,16 @@ start_link({host, Host}, {port, Port}, {light_controller, LightPid}, {home_id, H
 	end).
 
 serve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic}) ->
-	%% receive message
-	io:format("Waiting for message on emqtt client ~p ~n", [{ {emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic}, {"self", self()}}]),
 	receive
 		{publish, Topic, Payload} ->
 			emqttc:publish(C, <<"baldr-log">>, list_to_binary([ "Received message from ", Topic, " : ", Payload])), 
-			io:format("Message Received from ~s: ~s~n", [Topic, Payload]),
-			
 			{Message} = jiffy:decode(Payload),
 
 			case proplists:get_value(<<"protocolName">>, Message) of
 				<<"baldr">> -> handle_baldr_message( LightPid, Message );
 				_ -> default
 			end,
-
-			io:format("done "),			
+					
 			serve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic});
 
 		{baldr_mh_set_room_topic, Pid, R} ->
@@ -53,7 +45,6 @@ serve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightIn
 			serve({emqtt, C}, {light_controller, LightPid}, {state, Home, NewRoomTopic, LightInfoTopic, LightCommandTopic});
 
 		{baldr_mh_update_info, Pid, Info} ->
-			io:format("updating"),
 			emqttc:publish(C, LightInfoTopic, light_info_to_baldr_json(Info), [{retain, true}]),
 			serve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic});
 		
@@ -66,7 +57,6 @@ handle_baldr_message( LPid, [{<<"lightCommand">>, {Command}}|_] ) -> executeComm
 handle_baldr_message( LPid, [_|T] ) -> handle_baldr_message( LPid, T ).
 
 executeCommand(C, Params) -> executeCommand(C, Params, []).
-
 executeCommand(C, [Param | T], Args) -> 
 	%translate param to argument
 	case Param of 
@@ -76,12 +66,8 @@ executeCommand(C, [Param | T], Args) ->
 	end,
 	%recurse (next param)
 	executeCommand(C, T, [ Arg | Args]);
-
 %all params processed, execute
-executeCommand(C, [], Args) ->
-	baldr_light:set(C, Args).
-
-% [, {state, , ]
+executeCommand(C, [], Args) -> baldr_light:set(C, Args).
 
 color_to_hex({color, R, G, B}) -> list_to_binary(["#", dec_to_hex(R), dec_to_hex(G), dec_to_hex(B)]).
 dec_to_hex(D) -> string:right(integer_to_list(D, 16), 2, $0).
@@ -110,5 +96,4 @@ light_info_to_baldr_json(LightInfo) ->
 			]}
 		}
 	]},
-	io:format("~p~n", [InfoEJSON]),
 	jiffy:encode(InfoEJSON).
