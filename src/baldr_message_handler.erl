@@ -65,14 +65,23 @@ handle_baldr_message( _,    [] ) -> default;
 handle_baldr_message( LPid, [{<<"lightCommand">>, {Command}}|_] ) -> executeCommand( LPid, Command );
 handle_baldr_message( LPid, [_|T] ) -> handle_baldr_message( LPid, T ).
 
-executeCommand(C, Params) -> 
+executeCommand(C, Params) -> executeCommand(C, Params, []).
 
-	io:format("Executing Command ~n"),
-	State = proplists:get_value(<<"state">>, Params),
-	Color = proplists:get_value(<<"color">>, Params),
-	Room  = proplists:get_value(<<"room">>, Params),
+executeCommand(C, [Param | T], Args) -> 
+	%translate param to argument
+	case Param of 
+		{<<"color">>, Color} -> Arg = {color, hex_to_color(Color)};
+		{<<"state">>, State} -> Arg = {state, binary_to_atom(State, utf8)};
+		{<<"room">>, Room} -> Arg   = {room,  Room}
+	end,
+	%recurse (next param)
+	executeCommand(C, T, [ Arg | Args]);
 
-	baldr_light:set(C, [{color, hex_to_color(Color)}, {state, binary_to_atom(State, utf8)}, {room, Room}]).
+%all params processed, execute
+executeCommand(C, [], Args) ->
+	baldr_light:set(C, Args).
+
+% [, {state, , ]
 
 color_to_hex({color, R, G, B}) -> list_to_binary(["#", dec_to_hex(R), dec_to_hex(G), dec_to_hex(B)]).
 dec_to_hex(D) -> string:right(integer_to_list(D, 16), 2, $0).
