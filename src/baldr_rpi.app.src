@@ -1,0 +1,15 @@
+{application, baldr_rpi,
+ [
+  {description, "The light component of Baldr, implemented for the Raspberry Pi"},
+  {vsn, "0.1.1"},
+  {modules, baldr_client, baldr_gen_server, baldr_lamp, 
+  	baldr_lamp_gpio, baldr_lamp_pwm, baldr_lamp_text, 
+  	baldr_light, baldr_message_handler},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                ]},
+  {mod, { baldr_rpi_app, []}},
+  {env, []}
+ ]}.

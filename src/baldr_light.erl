@@ -1,27 +1,16 @@
 -module(baldr_light).
--export([ start/0, stop/1, set/2, hey/0,test_handler/0]).
-
-hey() -> hey.
-
-test_handler() ->
-receive
-	_ -> heyy, test_handler()
-end.
+-export([ start/0, set/2]).
 
 start() ->
-	% Config = load_configuration(),
-	% io:format("~p~n", [Config]),
-	% save_configuration(Config),
-
 	Args 	 = [],
 	MqttHost = proplists:get_value(mqtt_host, Args, "tann.si"),
 	MqttPort = proplists:get_value(mqtt_port, Args, 8883),
 
 	HomeID 	= proplists:get_value(home_id, Args, "asdf"),
-	LightID = proplists:get_value(light_id, Args, "1"),
+	LightID = proplists:get_value(light_id, Args, "3"),
 	MsgPid 	= baldr_message_handler:start_link({host, MqttHost}, {port, MqttPort}, {light_controller, self()}, {home_id, HomeID}, {light_id, LightID}),
 	
-	LampMode = text,
+	LampMode = ws281x,
 
 	case LampMode of
 		text -> 
@@ -29,7 +18,10 @@ start() ->
 			{ok, LedPid} = baldr_lamp:start_link({type, text});
 		gpio -> 
 			io:format("NOTE: Running lamp in gpio mode"),
-			{ok, LedPid} = baldr_lamp:start_link({type, gpio}, [{pins, 17, 22, 27}])
+			{ok, LedPid} = baldr_lamp:start_link({type, gpio}, [{pins, 17, 22, 27}]);
+		ws281x ->
+			io:format("NOTE: Running lamp in pwm mode"),
+			{ok, LedPid} = baldr_lamp:start_link({type, ws281x}, [{led, 0}])
 	end,
 
 	State 	= off,

@@ -4,8 +4,9 @@
 
 start_link( Type ) -> start_link(Type, []).
 
-start_link( {type, text}, _) 		-> baldr_lamp_text:start_link();
-start_link( {type, gpio}, [Pins]) 	-> baldr_lamp_gpio:start_link(Pins). 
+start_link( {type, text}, _) 		    -> baldr_lamp_text:start_link();
+start_link( {type, gpio},   [Pins]) 	-> baldr_lamp_gpio:start_link(Pins);
+start_link( {type, ws281x}, [Led]) 		-> baldr_lamp_ws281x:start_link(Led). 
 
 set(Pid, false) -> 
 	set(Pid, {color, 0, 0, 0});

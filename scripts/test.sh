@@ -24,20 +24,46 @@ publish_path(){
 	fi
 }
 
+publish_string(){
+	TOPIC=lightcontrol/home/$HOME_ID/light/$LIGHT_ID/commands
+	echo $'\n\nSending\n\n'
+	echo "Topic: "$TOPIC
+	echo $'Message:\n' $1
+
+	mosquitto_pub -h tann.si -p 8883 -t $TOPIC -m $1
+
+
+	echo $'\n\nDone.'
+
+	if [ $WAIT == 1 ] 
+		then
+			echo 'Enter to continue...'
+			read 
+		else
+			sleep 1
+	fi
+}
+
+color_message(){
+	MESSAGE='{"protocolName":"baldr","version":1,"lightCommand":{"color":"'$1'"}}'
+}
+
 clear
+color_message "test"
+echo $MESSAGE
 
 while true; do
 	echo "What test do you want to run"
 	echo
 	echo "1. Set to [on, #0FF0FF, Kitchen]"
 	echo "2. Set room to Living Room"
-	echo "3. Set color to #0000FF"
+	echo "3. Turn light on"
 	echo "4. Turn light off"
-	# echo "5. -"
-	# echo "6. -"
-	# echo "7. -"
-	# echo "8. -"
-	# echo "9. -"
+	echo "5. Set color to red"
+	echo "6. Set color to green"
+	echo "7. Set color to blue"
+	echo "8. Set color to yellow"
+	echo "9. Set color to purple"
 	echo 
 	echo "l  Set light ID"
 	echo "h  Set home ID"
@@ -48,16 +74,36 @@ while true; do
 		
 	case $selection in
 		1)
-		publish_path "./scripts/test_message_set.json"
+		publish_path "./scripts/test_message_all.json"
 		;;
 		2)
 		publish_path "./scripts/test_message_room.json"
 		;;
 		3)
-		publish_path "./scripts/test_message_color.json"
+		publish_path "./scripts/test_message_on.json"
 		;;
 		4)
-		publish_path "./scripts/test_message_state.json"
+		publish_path "./scripts/test_message_off.json"
+		;;
+		5)
+		color_message "#FF0000"
+		publish_string $MESSAGE
+		;;
+		6)
+		color_message "#00FF00"
+		publish_string $MESSAGE
+		;;
+		7)
+		color_message "#0000FF"
+		publish_string $MESSAGE
+		;;
+		8)
+		color_message "#FFFF00"
+		publish_string $MESSAGE
+		;;
+		9)
+		color_message "#FF00FF"
+		publish_string $MESSAGE
 		;;
 		l)
 		clear

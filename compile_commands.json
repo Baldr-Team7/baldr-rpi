@@ -1,0 +1,6 @@
+[
+{ "file"      : "c_src/pwm_nif.c"
+, "directory" : "/home/jpp/projects/erlang/baldr-rpi"
+, "command"   : "cc -c -g -Wall -fPIC -MMD -I\"/usr/lib/erlang/lib/erl_interface-3.9.1/include\" -I\"/usr/lib/erlang/erts-8.1/include\" c_src/pwm_nif.c -o c_src/pwm_nif.o"
+}
+]

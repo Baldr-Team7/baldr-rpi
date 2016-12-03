@@ -2,6 +2,6 @@
 	"protocolName":"baldr",
 	"version":1,
 	"lightCommand":{
-		"color":"#0000FF"
+		"state":"on"
 	}
 }
