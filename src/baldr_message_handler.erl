@@ -1,8 +1,10 @@
 -module(baldr_message_handler).
 -export([start_link/5, set_room_topic/2, update_info/2, light_info_to_baldr_json/1]).
 
+-record(light, {id, name, state=off, color={color, 255, 255, 255}, room, lamp}).
+
 home_topic(H)-> list_to_binary([<<"lightcontrol/home/">>,H]).
-room_topic(H, R)-> list_to_binary([home_topic(H), <<"/room/">>, R]).
+room_topic(H, R)-> list_to_binary([home_topic(H), <<"/room/">>, R, <<"/commands">>]).
 light_topic(H, L)-> list_to_binary([home_topic(H), <<"/light/">>, L]).
 light_info_topic(H, L)-> list_to_binary([light_topic(H,L), <<"/info">>]).
 light_command_topic(H, L)-> list_to_binary([light_topic(H,L), <<"/commands">>]).
@@ -14,7 +16,7 @@ start_link({host, Host}, {port, Port}, {light_controller, LightPid}, {home_id, H
 	LightCommandTopic = light_command_topic(HomeID, LightID),
 	
 	spawn_link(fun () ->
-		{ok, C} = emqttc:start_link([{host, Host}, {port, Port}, {client_id, <<"simpleClientasdf">>}, {logger, info}]),
+		{ok, C} = emqttc:start_link([{host, Host}, {port, Port}, {logger, info}, {keepalive, 0}]),
 		emqttc:subscribe(C, LightCommandTopic, qos1),
 		serve({emqtt, C}, {light_controller, LightPid}, {state, HomeID, RoomTopic, LightInfoTopic, LightCommandTopic}) 
 	end).
@@ -41,7 +43,7 @@ serve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightIn
 			NewRoomTopic = room_topic(Home, R),
 			emqttc:subscribe(C, NewRoomTopic, qos1),
 
-			Pid ! {baldr_mh_set_room_topic_r, self()},
+			%Pid ! {baldr_mh_set_room_topic_r, self()},
 			serve({emqtt, C}, {light_controller, LightPid}, {state, Home, NewRoomTopic, LightInfoTopic, LightCommandTopic});
 
 		{baldr_mh_update_info, Pid, Info} ->
@@ -62,6 +64,7 @@ executeCommand(C, [Param | T], Args) ->
 	case Param of 
 		{<<"color">>, Color} -> Arg = {color, hex_to_color(Color)};
 		{<<"state">>, State} -> Arg = {state, binary_to_atom(State, utf8)};
+		{<<"name">>, Name} -> Arg   = {name,  Name};
 		{<<"room">>, Room} -> Arg   = {room,  Room}
 	end,
 	%recurse (next param)
@@ -89,10 +92,11 @@ light_info_to_baldr_json(LightInfo) ->
 		{<<"version">>, 1},
 		{<<"lightInfo">>, 
 			{[
-				{<<"id">>, list_to_binary(proplists:get_value(id, LightInfo, null))},
-				{<<"state">>, list_to_binary(atom_to_list(proplists:get_value(state, LightInfo, null)))},
-				{<<"color">>, color_to_hex( proplists:get_value(color, LightInfo, null) ) },
-				{<<"room">>, proplists:get_value(room, LightInfo, null)}
+				{   <<"id">>, 	list_to_binary(LightInfo#light.id)},
+				{ <<"name">>, 	LightInfo#light.name},
+				{<<"state">>, 	list_to_binary(atom_to_list(LightInfo#light.state))},
+				{<<"color">>, 	color_to_hex(LightInfo#light.color) },
+				{ <<"room">>, 	LightInfo#light.room}
 			]}
 		}
 	]},

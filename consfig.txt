@@ -1,0 +1,11 @@
+{discoveryCode,"AAAAAAAA"}.
+{home,"asdf"}.
+{mqtt,{"tann.si",8883}}.
+{lights,[{light,"2",<<"second garage">>,off,
+                {color,255,255,255},
+                undefined,
+                {lamp,text,[{index,0}],undefined}},
+         {light,"4",<<"fourth cup storage">>,off,
+                {color,255,0,255},
+                undefined,
+                {lamp,text,[{index,1}],undefined}}]}.

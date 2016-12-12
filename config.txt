@@ -1,19 +1,39 @@
-{discoveryCode,"AAAAAAAA"}.
-{home, "f343338c-c3bf-4b36-a711-720a2b8353d2"}.
+{discoveryCode,<<"AAAAAAAA">>}.
+{home, undefined}.
+{mqtt, {"tann.si", 8883}}.
 {lights,
 	[
-		{light,
-			[
-				{id,"0494d233-861e-4e8b-aa1c-e2d8d62c7e9a"},
-				{multicolor,true},
-				{pins, 17, 21, 27}
-			]},
-		{light,
-			[
-				{id,"0494d233-861e-4e8b-aa1c-e2d8d62c7e9b"},
-				{room, "Kitchen"},
-				{multicolor,false},
-				{pin, 10}
-			]}
+		{ % id, name, state, color, room, lamp
+			light,
+			"2",
+			<<"second garage">>,
+			off,
+			{color, 255, 255, 255},
+			undefined,
+			{
+				lamp,
+				text, 
+				[ 
+					{index, 0}
+				],
+				undefined
+			}
+		},
+		{
+			light,
+			"4",
+			<<"fourth cup storage">>,
+			off,
+			{color, 255, 0, 255},
+			undefined,
+			{
+				lamp,
+				text, 
+				[
+					{index, 1}
+				],
+				undefined
+			}
+		}
 	]
 }.

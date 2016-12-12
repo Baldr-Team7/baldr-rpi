@@ -1,114 +1,63 @@
 -module(baldr_light).
--export([ start/0, set/2]).
+-behaviour(gen_server).
+-export([init/1, handle_call/3, set/2, get_state/1]).
 
-start() ->
-	Args 	 = [],
-	MqttHost = proplists:get_value(mqtt_host, Args, "tann.si"),
-	MqttPort = proplists:get_value(mqtt_port, Args, 8883),
+-record(lamp, {type, args, pid}).
+-record(light, {id, name, state=off, color={color, 255, 255, 255}, room, lamp}).
+-record(light_args, {home, mqtt, light}).
+-record(baldr_light_state, {light, led_pid, msg_pid}).
 
-	HomeID 	= proplists:get_value(home_id, Args, "asdf"),
-	LightID = proplists:get_value(light_id, Args, "3"),
-	MsgPid 	= baldr_message_handler:start_link({host, MqttHost}, {port, MqttPort}, {light_controller, self()}, {home_id, HomeID}, {light_id, LightID}),
+init(Args) ->
+	HomeId = Args#light_args.home,
+	{MqttHost, MqttPort} = Args#light_args.mqtt,
+	Light = Args#light_args.light,
+
+	MsgPid 	= baldr_message_handler:start_link({host, MqttHost}, {port, MqttPort}, {light_controller, self()}, {home_id, HomeId}, {light_id, Light#light.id}),
 	
-	LampMode = ws281x,
+	Lamp = Light#light.lamp,
 
-	case LampMode of
-		text -> 
-			io:format("NOTE: Running lamp in text mode"), 
-			{ok, LedPid} = baldr_lamp:start_link({type, text});
-		gpio -> 
-			io:format("NOTE: Running lamp in gpio mode"),
-			{ok, LedPid} = baldr_lamp:start_link({type, gpio}, [{pins, 17, 22, 27}]);
-		ws281x ->
-			io:format("NOTE: Running lamp in pwm mode"),
-			{ok, LedPid} = baldr_lamp:start_link({type, ws281x}, [{led, 0}])
-	end,
+	{ok, LedPid} = baldr_lamp:start_link({type, Lamp#lamp.type}, Lamp#lamp.args),
+	InitializedLamp = Lamp#lamp{pid=LedPid},
 
-	State 	= off,
-	Color 	= proplists:get_value(color, Args, {color, 255, 255, 255}),
-	Room 	= undefined,
+	{ok, #baldr_light_state{
+		light=Light#light{lamp=InitializedLamp},
+		led_pid=LedPid,
+		msg_pid=MsgPid
+	}}.
 
-	LightState 	= [
-		{color, Color},
-		{room, Room},
-		{state, State},
-		{id, LightID}
-	],
+handle_call({baldr_light_set, SetArgs}, _, State) ->
+			NewState = handle_args(SetArgs, State),
+			io:format("NEWSTATE = ~p~n", [NewState]),
+			update_lamp(NewState),
+			baldr_message_handler:update_info(NewState#baldr_light_state.msg_pid, NewState#baldr_light_state.light),
+			{reply, ok, NewState};
 
-	serve(MsgPid, LedPid, LightState).
+handle_call(baldr_light_get_state, _, State) -> {reply, State, State}.
 
-serve(MsgPid, LedPid, LightState) ->
-	receive
-		{baldr_light_set, Pid, SetArgs} ->
+handle_args([H|T], State) -> handle_args(T, handle_args(H, State));
+handle_args([   ], State) -> State;
 
-			{ColorChanged, Color} = prop_get_fallback(color, SetArgs, LightState),
-			{StateChanged, State} = prop_get_fallback(state, SetArgs, LightState),
+handle_args({color, C}, State) -> 
+	NewLight = State#baldr_light_state.light#light{color=C},
+	State#baldr_light_state{light=NewLight};
+handle_args({state, S}, State) -> 
+	NewLight = State#baldr_light_state.light#light{state=S},
+	State#baldr_light_state{light=NewLight};
+handle_args({name,  N}, State) -> 
+	NewLight = State#baldr_light_state.light#light{name=N},
+	State#baldr_light_state{light=NewLight};
+handle_args({room,  R}, State) -> 
+	baldr_message_handler:set_room_topic(State#baldr_light_state.msg_pid, R),
+	NewLight = State#baldr_light_state.light#light{room=R},
+	State#baldr_light_state{light=NewLight}.
 
-			case (ColorChanged or StateChanged) of 
-				true ->
-					case State of
-							off -> baldr_lamp:set(LedPid, false), off;
-							on  -> baldr_lamp:set(LedPid, Color), off;
-							_   -> void
-					end;
-				_ -> void
-			end,
-			{RoomChanged, Room}   = prop_get_fallback(room, SetArgs, LightState),
-
-			case RoomChanged of
-				true -> baldr_message_handler:set_room_topic(MsgPid, Room);
-				_ -> void
-			end,
-
-			NewState = [
-					{color, Color},
-					{room, Room},
-					{state, State},
-					{id, proplists:get_value(id, LightState)}
-				],
-
-			baldr_message_handler:update_info(MsgPid, NewState),
-
-			Pid ! {baldr_light_set_r, self()},
-			serve(MsgPid, LedPid, NewState);
-
-		{baldr_light_stop, Pid} -> Pid ! {baldr_light_stop_r, self()};
-		M -> io:format("Unhandled Message ~p~n", [M]), serve(MsgPid, LedPid, LightState)
+update_lamp(State) ->
+	Light = State#baldr_light_state.light,
+	LampPid = State#baldr_light_state.led_pid,
+	case Light#light.state of
+		on  -> baldr_lamp:set(LampPid, Light#light.color);
+		off -> baldr_lamp:set(LampPid, false)
 	end.
 
-prop_get_fallback(K, L, F) -> 
-	case proplists:get_value(K, L) of 
-		undefined 	-> {false, proplists:get_value(K, F)};
-		V 			-> {true, V}
-	end.
-			
-replaceProp({K, V}, L) -> replaceProp(K, V, L).
-
-replaceProp(K, undefined, L) -> L;
-replaceProp(K, V, L) -> [ {K, V} | proplists:delete(K, L)].
-
-replaceProps([], L) -> L;
-replaceProps([{K, V} | T], L) -> replaceProps(T, replaceProp(K, V, L)).
-
-stop(Pid) -> 
-	Pid ! {baldr_light_stop, self()},
-	receive {baldr_light_stop_r, Pid} -> ok end.
-
-set(Pid, Args) ->
-	Pid ! {baldr_light_set, self(), Args},
-	receive	{baldr_light_set_r, Pid} -> ok end.
-
-save_configuration(L) -> 
-	Filename = "config.txt",
-	
-	file:write_file(
-		Filename, 
-		lists:map(
-			fun(Term) -> 
-				io_lib:format("~tp.~n", [Term]) 
-			end, L), 
-		[{encoding, utf8}]).
-
-load_configuration() -> 
-	{ok, Terms} = file:consult("config.txt"),
-	Terms.
+get_state(C)-> gen_server:call(C, baldr_light_get_state).
+set(C, Args) -> gen_server:call(C, {baldr_light_set, Args}).
