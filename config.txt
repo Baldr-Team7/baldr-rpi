@@ -1,12 +1,12 @@
-{discoveryCode,<<"AAAAAAAA">>}.
+{discoveryCode,<<"A">>}.
 {home, undefined}.
 {mqtt, {"tann.si", 8883}}.
 {lights,
 	[
 		{ % id, name, state, color, room, lamp
 			light,
-			"2",
-			<<"second garage">>,
+			"1",
+			<<"first garage">>,
 			off,
 			{color, 255, 255, 255},
 			undefined,
@@ -21,8 +21,88 @@
 		},
 		{
 			light,
+			"2",
+			<<"second garage">>,
+			off,
+			{color, 255, 0, 255},
+			undefined,
+			{
+				lamp,
+				text, 
+				[
+					{index, 1}
+				],
+				undefined
+			}
+		},
+		{
+			light,
+			"3",
+			<<"third cup storage">>,
+			off,
+			{color, 255, 0, 255},
+			undefined,
+			{
+				lamp,
+				text, 
+				[
+					{index, 1}
+				],
+				undefined
+			}
+		},
+		{
+			light,
 			"4",
 			<<"fourth cup storage">>,
+			off,
+			{color, 255, 0, 255},
+			undefined,
+			{
+				lamp,
+				text, 
+				[
+					{index, 1}
+				],
+				undefined
+			}
+		},
+		{
+			light,
+			"5",
+			<<"fifth bathroom">>,
+			off,
+			{color, 255, 0, 255},
+			undefined,
+			{
+				lamp,
+				text, 
+				[
+					{index, 1}
+				],
+				undefined
+			}
+		},
+		{
+			light,
+			"6",
+			<<"sixth scissor storage">>,
+			off,
+			{color, 255, 0, 255},
+			undefined,
+			{
+				lamp,
+				text, 
+				[
+					{index, 1}
+				],
+				undefined
+			}
+		},
+		{
+			light,
+			"7",
+			<<"seventh altar">>,
 			off,
 			{color, 255, 0, 255},
 			undefined,

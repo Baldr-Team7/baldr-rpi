@@ -16,29 +16,34 @@ start(_StartType, _StartArgs) ->
 
     [{discoveryCode, DiscoveryCode}, {home, CHomeId}, {mqtt, Mqtt}, {lights, Lights} | _ ] = Config,
 
-    HomeId = case CHomeId of
-    			undefined -> 
+    HomeId = case CHomeId of 
+    			undefined -> % if theres no HomeId, enter discovery mode
     				{ok, H} = wait_for_discovery_message(DiscoveryCode, {mqtt, Mqtt}),
     				H;
-    			_ -> 
+    			_ -> 		 % else use the existing one
     				CHomeId 
     		end,
 
     LightPids = lists:map(fun(L) -> {ok, P} = launch_light({light_args, HomeId, Mqtt, L}), P end, Lights),
-    save_config(LightPids),
-    io:format("asdf ~p~n", [{CHomeId, HomeId}]),
+    save_config(LightPids, HomeId, Config),
     baldr_supervisor:start_link().
 
 launch_light(Args) ->
-	gen_server:start_link(baldr_light, Args, []).
+	{ok, Pid} = gen_server:start_link(baldr_light, Args, []),
+	baldr_light:update(Pid),
+	{ok, Pid}.
 
 stop(_State) ->
     ok.
 
-save_config(LightPids)->
+save_config(LightPids, HomeId, Config)->
 	% GET light state
 	States = lists:map(fun(Pid) -> {baldr_light_state, Light, _, _} = baldr_light:get_state(Pid), Light end, LightPids),
-	io:format("States ~p~n", [States]),
+
+	L = [{lights, States}, {home, HomeId}],
+	NewConfig = proplists:substitute_aliases(L, Config),
+
+	io:format("New Config ~p~n", [NewConfig]),
 	ok.
 
 save_configuration(L) -> 
@@ -62,6 +67,7 @@ wait_for_discovery_message(DiscoveryCode, {mqtt, {Host, Port}}) ->
 receive_discovery_message(DiscoveryCode) ->
 	receive 
 		{publish, <<"lightcontrol/discovery">>, Payload} -> 
+			io:format("P: ~p~n", [Payload]),
 			{Message} = jiffy:decode(Payload),
 			case handle_discovery_message(DiscoveryCode, Message) of
 				{ok, Home} -> 
@@ -72,9 +78,11 @@ receive_discovery_message(DiscoveryCode) ->
 	end.
 
 handle_discovery_message(DiscoveryCode, Message) ->
-	Protocol  = proplists:get_value(<<"protocol">>,  Message),
+	Protocol  = proplists:get_value(<<"protocolName">>,  Message),
 	Version   = proplists:get_value(<<"version">>,   Message),
 	
+	io:format("M: ~p~n", [Message]),
+
 	{Discovery} = proplists:get_value(<<"discovery">>, Message),
 	ReceivedDiscoveryCode = proplists:get_value(<<"discoveryCode">>, Discovery),
 	Home = proplists:get_value(<<"home">>, Discovery),

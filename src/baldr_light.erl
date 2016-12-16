@@ -1,6 +1,6 @@
 -module(baldr_light).
 -behaviour(gen_server).
--export([init/1, handle_call/3, set/2, get_state/1]).
+-export([init/1, handle_call/3, set/2, get_state/1, update/1]).
 
 -record(lamp, {type, args, pid}).
 -record(light, {id, name, state=off, color={color, 255, 255, 255}, room, lamp}).
@@ -32,7 +32,11 @@ handle_call({baldr_light_set, SetArgs}, _, State) ->
 			baldr_message_handler:update_info(NewState#baldr_light_state.msg_pid, NewState#baldr_light_state.light),
 			{reply, ok, NewState};
 
-handle_call(baldr_light_get_state, _, State) -> {reply, State, State}.
+handle_call(baldr_light_get_state, _, State) -> {reply, State, State};
+
+handle_call(baldr_light_update, _, State) -> 
+	baldr_message_handler:update_info(State#baldr_light_state.msg_pid, State#baldr_light_state.light),	
+	{reply, ok, State}.
 
 handle_args([H|T], State) -> handle_args(T, handle_args(H, State));
 handle_args([   ], State) -> State;
@@ -61,3 +65,4 @@ update_lamp(State) ->
 
 get_state(C)-> gen_server:call(C, baldr_light_get_state).
 set(C, Args) -> gen_server:call(C, {baldr_light_set, Args}).
+update(C) -> gen_server:call(C, baldr_light_update).

@@ -4,8 +4,112 @@
 		"selected_items":
 		[
 			[
+				"light_inf",
+				"light_info_to_smart_mirror_json"
+			],
+			[
+				"Lig",
+				"LightInfo"
+			],
+			[
+				"bald",
+				"baldr_light"
+			],
+			[
+				"Sta",
+				"State"
+			],
+			[
+				"baldr_li",
+				"baldr_light_update"
+			],
+			[
+				"re",
+				"receive_discovery_message"
+			],
+			[
+				"C",
+				"CHomeId"
+			],
+			[
+				"Ho",
+				"HomeId"
+			],
+			[
+				"d",
+				"wait_for_discovery_message"
+			],
+			[
+				"dis",
+				"discovery"
+			],
+			[
+				"Disv",
+				"Discovery"
+			],
+			[
+				"di",
+				"discoveryCode"
+			],
+			[
+				"Di",
+				"DiscoveryCode"
+			],
+			[
+				"exe",
+				"executeCommand"
+			],
+			[
+				"ge_",
+				"gen_server"
+			],
+			[
+				"hand",
+				"handle_call"
+			],
+			[
+				"New",
+				"NewLamp"
+			],
+			[
+				"Nw",
+				"NewLamp"
+			],
+			[
+				"M",
+				"MqttPort"
+			],
+			[
 				"L",
-				"Lamp_pid"
+				"LightPids"
+			],
+			[
+				"l",
+				"load_configuration"
+			],
+			[
+				"led",
+				"led_pid"
+			],
+			[
+				"Stat",
+				"State#baldr_light_state"
+			],
+			[
+				"State#",
+				"State#baldr_light_state"
+			],
+			[
+				"bal",
+				"baldr_light"
+			],
+			[
+				"new",
+				"NewLight"
+			],
+			[
+				"star",
+				"start_link"
 			],
 			[
 				"update",
@@ -16,20 +120,8 @@
 				"SetArgs"
 			],
 			[
-				"hand",
-				"handle_args"
-			],
-			[
-				"bald",
-				"baldr_lamp"
-			],
-			[
 				"lamp",
 				"lamp_pid"
-			],
-			[
-				"Stat",
-				"State#light"
 			],
 			[
 				"pro",
@@ -120,10 +212,6 @@
 				"load_configuration"
 			],
 			[
-				"led",
-				"led_set_r"
-			],
-			[
 				"lig",
 				"lightState"
 			],
@@ -184,10 +272,6 @@
 				"emqttc"
 			],
 			[
-				"bal",
-				"baldr_mh_update_info"
-			],
-			[
 				"ba",
 				"baldr_light"
 			],
@@ -224,10 +308,6 @@
 				"gpio_set"
 			],
 			[
-				"re",
-				"receive"
-			],
-			[
 				"gpoi",
 				"gpio_set_r"
 			],
@@ -250,10 +330,6 @@
 			[
 				"dict",
 				"dict_new"
-			],
-			[
-				"Di",
-				"dict_put"
 			],
 			[
 				"dict_",
@@ -286,10 +362,6 @@
 			[
 				"list_",
 				"list_get_bfs"
-			],
-			[
-				"d",
-				"digitize"
 			],
 			[
 				"tre",
@@ -348,20 +420,13 @@
 	"buffers":
 	[
 		{
-			"file": "rebar.config",
+			"contents": "-module(baldr_message_handler).\n-export([start_link/5, set_room_topic/2, update_info/2, light_info_to_baldr_json/1]).\n\n-record(light, {id, name, state=off, color={color, 255, 255, 255}, room, lamp}).\n\nhome_topic(H)-> list_to_binary([<<\"lightcontrol/home/\">>,H]).\nroom_topic(H, R)-> list_to_binary([home_topic(H), <<\"/room/\">>, R, <<\"/commands\">>]).\nlight_topic(H, L)-> list_to_binary([home_topic(H), <<\"/light/\">>, L]).\nlight_info_topic(H, L)-> list_to_binary([light_topic(H,L), <<\"/info\">>]).\nlight_command_topic(H, L)-> list_to_binary([light_topic(H,L), <<\"/commands\">>]).\nsmos_topic(H, U, L) -> \n\nstart_link({host, Host}, {port, Port}, {light_controller, LightPid}, {home_id, HomeID}, {light_id, LightID}) ->\n\t%% connect to broker\n\tRoomTopic  = undefined,\n\tLightInfoTopic = light_info_topic(HomeID, LightID),\n\tLightCommandTopic = light_command_topic(HomeID, LightID),\n\t\n\tspawn_link(fun () ->\n\t\t{ok, C} = emqttc:start_link([{host, Host}, {port, Port}, {logger, info}, {keepalive, 0}]),\n\t\temqttc:subscribe(C, LightCommandTopic, qos1),\n\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, HomeID, RoomTopic, LightInfoTopic, LightCommandTopic}) \n\tend).\n\nserve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic}) ->\n\treceive\n\t\t{publish, Topic, Payload} ->\n\t\t\temqttc:publish(C, <<\"baldr-log\">>, list_to_binary([ \"Received message from \", Topic, \" : \", Payload])), \n\t\t\t{Message} = jiffy:decode(Payload),\n\n\t\t\tcase proplists:get_value(<<\"protocolName\">>, Message) of\n\t\t\t\t<<\"baldr\">> -> handle_baldr_message( LightPid, Message );\n\t\t\t\t_ -> default\n\t\t\tend,\n\t\t\t\t\t\n\t\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic});\n\n\t\t{baldr_mh_set_room_topic, Pid, R} ->\n\t\t\tcase RoomTopic of\n\t\t\t\tundefined -> void;\n\t\t\t\tRT -> emqttc:unsubscribe(C, RT)\n\t\t\tend,\n\n\t\t\tNewRoomTopic = room_topic(Home, R),\n\t\t\temqttc:subscribe(C, NewRoomTopic, qos1),\n\n\t\t\t%Pid ! {baldr_mh_set_room_topic_r, self()},\n\t\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, Home, NewRoomTopic, LightInfoTopic, LightCommandTopic});\n\n\t\t{baldr_mh_update_info, Pid, Info} ->\n\t\t\temqttc:publish(C, LightInfoTopic, light_info_to_baldr_json(Info), [{retain, true}]),\n\t\t\temqttc:publish(C, )\n\t\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic});\n\t\t\n\t\t{baldr_mh_stop, Pid} -> \n\t\t\tPid ! {baldr_mh_stop_r, self()}\n\tend.\n\nhandle_baldr_message( _,    [] ) -> default;\nhandle_baldr_message( LPid, [{<<\"lightCommand\">>, {Command}}|_] ) -> executeCommand( LPid, Command );\nhandle_baldr_message( LPid, [_|T] ) -> handle_baldr_message( LPid, T ).\n\nexecuteCommand(C, Params) -> executeCommand(C, Params, []).\nexecuteCommand(C, [Param | T], Args) -> \n\t%translate param to argument\n\tcase Param of \n\t\t{<<\"color\">>, Color} -> Arg = {color, hex_to_color(Color)};\n\t\t{<<\"state\">>, State} -> Arg = {state, binary_to_atom(State, utf8)};\n\t\t{<<\"name\">>, Name} -> Arg   = {name,  Name};\n\t\t{<<\"room\">>, Room} -> Arg   = {room,  Room}\n\tend,\n\t%recurse (next param)\n\texecuteCommand(C, T, [ Arg | Args]);\n%all params processed, execute\nexecuteCommand(C, [], Args) -> baldr_light:set(C, Args).\n\ncolor_to_hex({color, R, G, B}) -> list_to_binary([\"#\", dec_to_hex(R), dec_to_hex(G), dec_to_hex(B)]).\ndec_to_hex(D) -> string:right(integer_to_list(D, 16), 2, $0).\n\nhex_to_color(<<\"#\", R:2/binary, G:2/binary, B:2/binary>>) -> {color, hex_to_dec(R), hex_to_dec(G), hex_to_dec(B)}.\nhex_to_dec(H) -> {ok, [V], []} = io_lib:fread(\"~16u\", binary_to_list(H)), V.\n\n% stop listening at any previous rooms and listen to a new one\nset_room_topic(Pid, R) -> \n\tPid ! {baldr_mh_set_room_topic, self(), R}.\n\t%receive {baldr_mh_set_room_topic_r, Pid} -> ok end.\n\nupdate_info(Pid, Info) ->\n\tPid ! {baldr_mh_update_info, self(), Info}.\n\nlight_info_to_baldr_json(LightInfo) ->\n\tInfoEJSON = {[\n\t\t{<<\"protocolName\">>, <<\"baldr\">>},\n\t\t{<<\"version\">>, 1},\n\t\t{<<\"lightInfo\">>, \n\t\t\t{[\n\t\t\t\t{   <<\"id\">>, \tlist_to_binary(LightInfo#light.id)},\n\t\t\t\t{ <<\"name\">>, \tLightInfo#light.name},\n\t\t\t\t{<<\"state\">>, \tlist_to_binary(atom_to_list(LightInfo#light.state))},\n\t\t\t\t{<<\"color\">>, \tcolor_to_hex(LightInfo#light.color) },\n\t\t\t\t{ <<\"room\">>, \tLightInfo#light.room}\n\t\t\t]}\n\t\t}\n\t]},\n\tjiffy:encode(InfoEJSON).\n\nlight_info_to_smart_mirror_json(LightInfo) -> ok.\n\n\nlight_info_to_sensor_json(LightInfo, HomeID) -> \n\t{Mega, Sec, _} = os:timestamp(),\n\tTimestamp = Mega * 1000000 + Sec,\n\n\tSensorEJSON = {[\n\t\t{<<\"Group\">>, <<\"baldr-home-\", HomeID>>},\n\t\t{<<\"User\">>, <<\"baldr-user\">>},\n\t\t{<<\"Sensor_hub\">>, LightInfo#light.room},\n\t\t{<<\"SensorID\">>, LightInfo#light.name},\n\t\t{<<\"Value\">>, LightInfo#light.state},\n\t\t{<<\"Sensor_unit\">>, <<\"\">>},\n\t\t{<<\"Timestamp\">>, Timestamp}\n\t]},\n\tjiffy:encode(SensorEJSON).\n\n",
+			"file": "src/baldr_message_handler.erl",
+			"file_size": 4698,
+			"file_write_time": 131261034203643032,
 			"settings":
 			{
-				"buffer_size": 570,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "src/baldr_lamp_text.erl",
-			"settings":
-			{
-				"buffer_size": 266,
-				"encoding": "UTF-8",
+				"buffer_size": 4745,
 				"line_ending": "Unix"
 			}
 		},
@@ -373,50 +438,6 @@
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
-		},
-		{
-			"file": "src/baldr_light.erl",
-			"settings":
-			{
-				"buffer_size": 2320,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"contents": "gen_server(3erl)       Erlang Module Definition          gen_server(3erl)\n\nNAME\n       gen_server - Generic server behavior.\n\nDESCRIPTION\n       This behavior module provides the server of a client-server relation. A\n       generic server process (gen_server) implemented using this module has a\n       standard  set  of  interface  functions    and includes functionality for\n       tracing and error reporting. It also fits into an OTP supervision tree.\n       For  more  information, see section  gen_server Behaviour in OTP Design\n       Principles.\n\n       A gen_server process assumes all specific parts    to  be    located  in  a\n       callback  module exporting a predefined set of functions. The relation\n       ship between the behavior functions and the callback  functions    is  as\n       follows:\n\n       gen_server module        Callback module\n       -----------------        ---------------\n       gen_server:start\n       gen_server:start_link -----> Module:init/1\n\n       gen_server:stop         -----> Module:terminate/2\n\n       gen_server:call\n       gen_server:multi_call -----> Module:handle_call/3\n\n       gen_server:cast\n       gen_server:abcast     -----> Module:handle_cast/2\n\n       -             -----> Module:handle_info/2\n\n       -             -----> Module:terminate/2\n\n       -             -----> Module:code_change/3\n\n       If  a  callback    function  fails or returns a bad value, the gen_server\n       process terminates.\n\n       A gen_server process handles system messages as described in sys(3erl).\n       The sys module can be used for debugging a gen_server process.\n\n       Notice  that  a gen_server process does not trap exit signals automati\n       cally, this must be explicitly initiated in the callback module.\n\n       Unless otherwise stated, all functions in this module fail if the spec\n       ified  gen_server process does not exist or if bad arguments are speci\n       fied.\n\n       The gen_server process can go into hibernation (see erlang:hibernate/3)\n       if  a  callback    function  specifies  'hibernate' instead of a time-out\n       value. This can be useful if the server is expected to be  idle    for  a\n       long  time. However, use this feature with care, as hibernation implies\n       at least two garbage collections (when hibernating  and    shortly  after\n       waking  up)  and is not something you want to do between each call to a\n       busy server.\n\nEXPORTS\n       abcast(Name, Request) -> abcast\n       abcast(Nodes, Name, Request) -> abcast\n\n          Types:\n\n         Nodes = [Node]\n          Node = atom()\n         Name = atom()\n         Request = term()\n\n          Sends  an  asynchronous  request    to  the  gen_server  processes\n          locally  registered as Name at the specified nodes. The function\n          returns immediately and ignores nodes  that  do  not  exist,  or\n          where  the  gen_server  Name does not exist. The gen_server pro\n          cesses call Module:handle_cast/2 to handle the request.\n\n          For a description of the arguments, see multi_call/2,3,4.\n\n       call(ServerRef, Request) -> Reply\n       call(ServerRef, Request, Timeout) -> Reply\n\n          Types:\n\n         ServerRef = Name | {Name,Node} | {global,GlobalName}\n          | {via,Module,ViaName} | pid()\n          Node = atom()\n          GlobalName = ViaName = term()\n         Request = term()\n         Timeout = int()>0 | infinity\n         Reply = term()\n\n          Makes a synchronous call to  the    ServerRef  of  the  gen_server\n          process  by  sending a request and waiting until a reply arrives\n          or a time-out occurs. The gen_server process  calls  Module:han\n          dle_call/3 to handle the request.\n\n          ServerRef can be any of the following:\n\n        * The pid\n\n        * Name, if the gen_server process is locally registered\n\n        * {Name,Node}, if the gen_server process is locally registered\n          at another node\n\n        * {global,GlobalName}, if the gen_server process  is  globally\n          registered\n\n        * {via,Module,ViaName},  if  the  gen_server process is regis\n          tered through an alternative process registry\n\n          Request is any term that is passed as one of  the  arguments  to\n          Module:handle_call/3.\n\n          Timeout  is an integer greater than zero that specifies how many\n          milliseconds to wait for a reply, or the atom infinity  to  wait\n          indefinitely.  Defaults  to 5000. If no reply is received within\n          the specified time, the  function  call  fails.  If  the    caller\n          catches  the  failure  and  continues running, and the server is\n          just late with the reply, it can arrive at any time  later  into\n          the message queue of the caller. The caller must in this case be\n          prepared for this and discard any such garbage messages that are\n          two element tuples with a reference as the first element.\n\n          The  return  value  Reply is defined in the return value of Mod\n          ule:handle_call/3.\n\n          The call can fail for many reasons, including time-out  and  the\n          called gen_server process dying before or during the call.\n\n      Note:\n          The ancient behavior of sometimes consuming the server exit mes\n          sage if the server died during the  call    while  linked  to  the\n          client was removed in Erlang 5.6/OTP R12B.\n\n       cast(ServerRef, Request) -> ok\n\n          Types:\n\n         ServerRef = Name | {Name,Node} | {global,GlobalName}\n          | {via,Module,ViaName} | pid()\n          Node = atom()\n          GlobalName = ViaName = term()\n         Request = term()\n\n          Sends an asynchronous request to the ServerRef of the gen_server\n          process and returns ok immediately, ignoring if the  destination\n          node  or    gen_server  process  does  not    exist.    The gen_server\n          process calls Module:handle_cast/2 to handle the request.\n\n          For a description of ServerRef, see call/2,3.\n\n          Request is any term that is passed as one of  the  arguments  to\n          Module:handle_cast/2.\n\n       enter_loop(Module, Options, State)\n       enter_loop(Module, Options, State, ServerName)\n       enter_loop(Module, Options, State, Timeout)\n       enter_loop(Module, Options, State, ServerName, Timeout)\n\n          Types:\n\n         Module = atom()\n         Options = [Option]\n          Option = {debug,Dbgs}\n          Dbgs = [Dbg]\n          Dbg = trace | log | statistics\n          | {log_to_file,FileName} | {install,{Func,FuncState}}\n         State = term()\n         ServerName = {local,Name} | {global,GlobalName}\n          | {via,Module,ViaName}\n          Name = atom()\n          GlobalName = ViaName = term()\n         Timeout = int() | infinity\n\n          Makes  an  existing  process into a gen_server process. Does not\n          return,  instead    the  calling  process  enters  the  gen_server\n          process  receive    loop  and  becomes  a  gen_server process. The\n          process must have been started using one of the start  functions\n          in  proc_lib(3erl).  The user is responsible for any initializa\n          tion of the process, including registering a name for it.\n\n          This function is useful when a more complex initialization  pro\n          cedure is needed than the gen_server process behavior provides.\n\n          Module,  Options,  and ServerName have the same meanings as when\n          calling start[_link]/3,4. However, if ServerName    is  specified,\n          the  process  must  have been registered accordingly before this\n          function is called.\n\n          State and Timeout have the same meanings as in the return  value\n          of  Module:init/1.  The  callback module Module does not need to\n          export an init/1 function.\n\n          The function fails if the calling process was not started  by  a\n          proc_lib start function, or if it is not registered according to\n          ServerName.\n\n       multi_call(Name, Request) -> Result\n       multi_call(Nodes, Name, Request) -> Result\n       multi_call(Nodes, Name, Request, Timeout) -> Result\n\n          Types:\n\n         Nodes = [Node]\n          Node = atom()\n         Name = atom()\n         Request = term()\n         Timeout = int()>=0 | infinity\n         Result = {Replies,BadNodes}\n          Replies = [{Node,Reply}]\n          Reply = term()\n         BadNodes = [Node]\n\n          Makes a synchronous call to  all    gen_server  processes  locally\n          registered  as  Name  at    the specified nodes by first sending a\n          request to every node  and  then    waits  for  the  replies.  The\n          gen_server  process  calls  Module:handle_call/3    to  handle the\n          request.\n\n          The function returns a tuple {Replies,BadNodes},    where  Replies\n          is  a  list  of {Node,Reply} and BadNodes is a list of node that\n          either did not exist, or where the gen_server Name did not exist\n          or did not reply.\n\n          Nodes  is  a  list  of  node names to which the request is to be\n          sent.  Default  value  is  the   list   of   all     known     nodes\n          [node()|nodes()].\n\n          Name is the locally registered name of each gen_server process.\n\n          Request  is  any    term that is passed as one of the arguments to\n          Module:handle_call/3.\n\n          Timeout is an integer greater than zero that specifies how  many\n          milliseconds  to    wait  for  each reply, or the atom infinity to\n          wait indefinitely. Defaults to infinity. If no reply is received\n          from  a  node  within  the  specified time, the node is added to\n          BadNodes.\n\n          When a reply Reply is received from the gen_server process at  a\n          node Node, {Node,Reply} is added to Replies. Reply is defined in\n          the return value of Module:handle_call/3.\n\n      Warning:\n          If one of the nodes cannot process monitors, for example,  C  or\n          Java  nodes,  and the gen_server process is not started when the\n          requests are sent, but starts within 2  seconds,    this  function\n          waits the whole Timeout, which may be infinity.\n\n          This problem does not exist if all nodes are Erlang nodes.\n\n          To  prevent late answers (after the time-out) from polluting the\n          message queue of the caller, a middleman process is used    to  do\n          the calls. Late answers are then discarded when they arrive to a\n          terminated process.\n\n       reply(Client, Reply) -> Result\n\n          Types:\n\n         Client - see below\n         Reply = term()\n         Result = term()\n\n          This function can be used by a gen_server process to  explicitly\n          send   a     reply     to   a   client   that   called  call/2,3  or\n          multi_call/2,3,4, when the reply cannot be defined in the return\n          value of Module:handle_call/3.\n\n          Client  must be the From argument provided to the callback func\n          tion. Reply is any term given back to the client as  the    return\n          value of call/2,3 or multi_call/2,3,4.\n\n          The return value Result is not further defined, and is always to\n          be ignored.\n\n       start(Module, Args, Options) -> Result\n       start(ServerName, Module, Args, Options) -> Result\n\n          Types:\n\n         ServerName = {local,Name} | {global,GlobalName}\n          | {via,Module,ViaName}\n          Name = atom()\n          GlobalName = ViaName = term()\n         Module = atom()\n         Args = term()\n         Options = [Option]\n          Option = {debug,Dbgs} | {timeout,Time} | {spawn_opt,SOpts}\n          Dbgs = [Dbg]\n          Dbg = trace | log | statistics  |  {log_to_file,FileName}  |\n         {install,{Func,FuncState}}\n          SOpts = [term()]\n         Result = {ok,Pid} | ignore | {error,Error}\n          Pid = pid()\n          Error = {already_started,Pid} | term()\n\n          Creates  a  standalone gen_server process, that is, a gen_server\n          process that is not part of a supervision tree and thus  has  no\n          supervisor.\n\n          For   a    description   of  arguments  and  return  values,  see\n          start_link/3,4.\n\n       start_link(Module, Args, Options) -> Result\n       start_link(ServerName, Module, Args, Options) -> Result\n\n          Types:\n\n         ServerName = {local,Name} | {global,GlobalName}\n          | {via,Module,ViaName}\n          Name = atom()\n          GlobalName = ViaName = term()\n         Module = atom()\n         Args = term()\n         Options = [Option]\n          Option = {debug,Dbgs} | {timeout,Time} | {spawn_opt,SOpts}\n          Dbgs = [Dbg]\n          Dbg = trace | log | statistics  |  {log_to_file,FileName}  |\n         {install,{Func,FuncState}}\n          SOpts = [term()]\n         Result = {ok,Pid} | ignore | {error,Error}\n          Pid = pid()\n          Error = {already_started,Pid} | term()\n\n          Creates a gen_server process as part of a supervision tree. This\n          function is to be called, directly or indirectly, by the    super\n          visor.  For  example,  it ensures that the gen_server process is\n          linked to the supervisor.\n\n          The gen_server process calls  Module:init/1  to  initialize.  To\n          ensure a synchronized startup procedure, start_link/3,4 does not\n          return until Module:init/1 has returned.\n\n        * If ServerName={local,Name}, the gen_server process is regis\n          tered locally as Name using register/2.\n\n        * If ServerName={global,GlobalName}, the gen_server process id\n          registered  globally    as  GlobalName     using     global:regis\n          ter_name/2 If no name is provided, the gen_server process is\n          not registered.\n\n        * If ServerName={via,Module,ViaName}, the  gen_server  process\n          registers  with the registry represented by Module. The Mod\n          ule callback is to  export  the  functions  register_name/2,\n          unregister_name/1,  whereis_name/1, and send/2, which are to\n          behave like the corresponding  functions  in    global.  Thus,\n          {via,global,GlobalName} is a valid reference.\n\n          Module is the name of the callback module.\n\n          Args  is    any  term  that  is  passed  as  the  argument to Mod\n          ule:init/1.\n\n        * If option {timeout,Time} is present, the gen_server  process\n          is  allowed to spend Time milliseconds initializing or it is\n          terminated and the start function returns {error,timeout}.\n\n        * If option {debug,Dbgs} is  present,  the  corresponding  sys\n          function is called for each item in Dbgs; see sys(3erl).\n\n        * If  option  {spawn_opt,SOpts} is present, SOpts is passed as\n          option list to the spawn_opt BIF, which is used to spawn the\n          gen_server process; see spawn_opt/2.\n\n      Note:\n          Using  spawn  option monitor is not allowed, it causes the func\n          tion to fail with reason badarg.\n\n          If the gen_server process is successfully created  and  initial\n          ized, the function returns {ok,Pid}, where Pid is the pid of the\n          gen_server process. If a process with the  specified  ServerName\n          exists        already,        the        function        returns\n          {error,{already_started,Pid}}, where Pid    is  the  pid  of  that\n          process.\n\n          If   Module:init/1  fails  with  Reason,    the  function  returns\n          {error,Reason}.  If  Module:init/1  returns   {stop,Reason}   or\n          ignore,  the  process  is  terminated  and  the function returns\n          {error,Reason} or ignore, respectively.\n\n       stop(ServerRef) -> ok\n       stop(ServerRef, Reason, Timeout) -> ok\n\n          Types:\n\n         ServerRef = Name | {Name,Node} | {global,GlobalName}\n          | {via,Module,ViaName} | pid()\n          Node = atom()\n          GlobalName = ViaName = term()\n         Reason = term()\n         Timeout = int()>0 | infinity\n\n          Orders a generic server to exit with the    specified  Reason  and\n          waits  for  it  to  terminate. The gen_server process calls Mod\n          ule:terminate/2 before exiting.\n\n          The function returns  ok    if  the  server  terminates  with  the\n          expected    reason.  Any  other  reason  than normal, shutdown, or\n          {shutdown,Term} causes  an  error  report  to  be  issued  using\n          error_logger:format/2. The default Reason is normal.\n\n          Timeout  is an integer greater than zero that specifies how many\n          milliseconds to wait for the server to terminate,  or  the  atom\n          infinity    to  wait  indefinitely.  Defaults  to infinity. If the\n          server has not terminated within the specified time,  a  timeout\n          exception is raised.\n\n          If the process does not exist, a noproc exception is raised.\n\nCALLBACK FUNCTIONS\n       The  following  functions are to be exported from a gen_server callback\n       module.\n\nEXPORTS\n       Module:code_change(OldVsn, State, Extra) -> {ok,  NewState}  |  {error,\n       Reason}\n\n          Types:\n\n         OldVsn = Vsn | {down, Vsn}\n          Vsn = term()\n         State = NewState = term()\n         Extra = term()\n         Reason = term()\n\n          This  function  is  called by a gen_server process when it is to\n          update its internal state during    a  release  upgrade/downgrade,\n          that  is, when the instruction {update,Module,Change,...}, where\n          Change={advanced,Extra}, is specifed in the appup file. For more\n          information,  see  section  Release Handling Instructions in OTP\n          Design Principles.\n\n          For an upgrade, OldVsn is Vsn, and for a    downgrade,  OldVsn  is\n          {down,Vsn}.  Vsn    is  defined by the vsn attribute(s) of the old\n          version of the callback module Module. If no such  attribute  is\n          defined, the version is the checksum of the Beam file.\n\n          State is the internal state of the gen_server process.\n\n          Extra  is  passed  \"as is\" from the {advanced,Extra} part of the\n          update instruction.\n\n          If successful, the function must    return    the  updated  internal\n          state.\n\n          If  the  function  returns  {error,Reason},  the ongoing upgrade\n          fails and rolls back to the old release.\n\n       Module:format_status(Opt, [PDict, State]) -> Status\n\n          Types:\n\n         Opt = normal | terminate\n         PDict = [{Key, Value}]\n         State = term()\n         Status = term()\n\n      Note:\n          This callback is optional, so callback modules need  not    export\n          it.  The    gen_server module provides a default implementation of\n          this function that returns the callback module state.\n\n          This function is called by a gen_server process in the following\n          situations:\n\n        * One  of  sys:get_status/1,2 is invoked to get the gen_server\n          status. Opt is set to the atom normal.\n\n        * The gen_server process terminates  abnormally  and  logs  an\n          error. Opt is set to the atom terminate.\n\n          This  function is useful for changing the form and appearance of\n          the gen_server status for these cases. A callback module wishing\n          to  change  the  sys:get_status/1,2 return value, as well as how\n          its  status  appears  in    termination  error  logs,  exports  an\n          instance    of  format_status/2 that returns a term describing the\n          current status of the gen_server process.\n\n          PDict is the current value of  the  process  dictionary  of  the\n          gen_server process..\n\n          State is the internal state of the gen_server process.\n\n          The  function  is  to  return  Status,  a  term that changes the\n          details of the  current  state  and  status  of  the  gen_server\n          process.    There are no restrictions on the form Status can take,\n          but for the sys:get_status/1,2 case (when Opt  is  normal),  the\n          recommended  form  for  the  Status  value is [{data, [{\"State\",\n          Term}]}], where Term provides relevant details of the gen_server\n          state.  Following  this  recommendation  is not required, but it\n          makes the callback module status consistent with the rest of the\n          sys:get_status/1,2 return value.\n\n          One use for this function is to return compact alternative state\n          representations to avoid that large state terms are  printed  in\n          log files.\n\n       Module:handle_call(Request, From, State) -> Result\n\n          Types:\n\n         Request = term()\n         From = {pid(),Tag}\n         State = term()\n         Result = {reply,Reply,NewState} | {reply,Reply,NewState,Time\n         out}\n          | {reply,Reply,NewState,hibernate}\n          | {noreply,NewState} | {noreply,NewState,Timeout}\n          | {noreply,NewState,hibernate}\n          | {stop,Reason,Reply,NewState} | {stop,Reason,NewState}\n          Reply = term()\n          NewState = term()\n          Timeout = int()>=0 | infinity\n          Reason = term()\n\n          Whenever a gen_server process  receives  a  request  sent  using\n          call/2,3    or multi_call/2,3,4, this function is called to handle\n          the request.\n\n          Request is the Request argument provided to call or multi_call.\n\n          From is a tuple {Pid,Tag}, where Pid is the pid  of  the    client\n          and Tag is a unique tag.\n\n          State is the internal state of the gen_server process.\n\n        * If  {reply,Reply,NewState}  is  returned,  {reply,Reply,New\n          State,Timeout} or {reply,Reply,NewState,hibernate}, Reply is\n          given  back  to  From  as  the  return  value of call/2,3 or\n          included  in    the  return  value  of    multi_call/2,3,4.  The\n          gen_server  process then continues executing with the possi\n          bly updated internal state NewState.\n\n          For  a  description  of  Timeout  and  hibernate,  see  Mod\n          ule:init/1.\n\n        * If  {noreply,NewState}  is returned, {noreply,NewState,Time\n          out},  or   {noreply,NewState,hibernate},   the   gen_server\n          process continues executing with NewState. Any reply to From\n          must be specified explicitly using reply/2.\n\n        * If {stop,Reason,Reply,NewState} is returned, Reply is  given\n          back to From.\n\n        * If  {stop,Reason,NewState}  is  returned,  any reply to From\n          must be specified explicitly using reply/2.  The  gen_server\n          process  then  calls    Module:terminate(Reason,NewState)  and\n          terminates.\n\n       Module:handle_cast(Request, State) -> Result\n\n          Types:\n\n         Request = term()\n         State = term()\n         Result = {noreply,NewState} | {noreply,NewState,Timeout}\n          | {noreply,NewState,hibernate}\n          | {stop,Reason,NewState}\n          NewState = term()\n          Timeout = int()>=0 | infinity\n          Reason = term()\n\n          Whenever a gen_server process  receives  a  request  sent  using\n          cast/2  or  abcast/2,3,  this  function  is called to handle the\n          request.\n\n          For a description of the arguments and possible  return  values,\n          see Module:handle_call/3.\n\n       Module:handle_info(Info, State) -> Result\n\n          Types:\n\n         Info = timeout | term()\n         State = term()\n         Result = {noreply,NewState} | {noreply,NewState,Timeout}\n          | {noreply,NewState,hibernate}\n          | {stop,Reason,NewState}\n          NewState = term()\n          Timeout = int()>=0 | infinity\n          Reason = normal | term()\n\n          This  function is called by a gen_server process when a time-out\n          occurs or when it receives any other message than a  synchronous\n          or asynchronous request (or a system message).\n\n          Info  is either the atom timeout, if a time-out has occurred, or\n          the received message.\n\n          For a description of the other  arguments  and  possible    return\n          values, see Module:handle_call/3.\n\n       Module:init(Args) -> Result\n\n          Types:\n\n         Args = term()\n         Result  =  {ok,State} | {ok,State,Timeout} | {ok,State,hiber\n         nate}\n          | {stop,Reason} | ignore\n          State = term()\n          Timeout = int()>=0 | infinity\n          Reason = term()\n\n          Whenever a gen_server process  is  started  using  start/3,4  or\n          start_link/3,4,  this  function  is called by the new process to\n          initialize.\n\n          Args is the Args argument provided to the start function.\n\n          If the initialization is successful, the function is  to    return\n          {ok,State},  {ok,State,Timeout},    or {ok,State,hibernate}, where\n          State is the internal state of the gen_server process.\n\n          If an integer time-out value  is    provided,  a  time-out    occurs\n          unless  a  request  or a message is received within Timeout mil\n          liseconds. A time-out is represented by the atom timeout,  which\n          is  to be handled by the Module:handle_info/2 callback function.\n          The atom infinity can be used to wait indefinitely, this is  the\n          default value.\n\n          If  hibernate  is  specified  instead  of  a time-out value, the\n          process goes into hibernation when waiting for the next  message\n          to arrive (by calling proc_lib:hibernate/3).\n\n          If   the     initialization  fails,  the  function    is  to    return\n          {stop,Reason}, where Reason is any term, or ignore.\n\n       Module:terminate(Reason, State)\n\n          Types:\n\n         Reason = normal | shutdown | {shutdown,term()} | term()\n         State = term()\n\n          This function is called by a gen_server process when it is about\n          to  terminate.  It is to be the opposite of Module:init/1 and do\n          any necessary cleaning  up.  When  it  returns,  the  gen_server\n          process terminates with Reason. The return value is ignored.\n\n          Reason  is  a  term  denoting  the  stop reason and State is the\n          internal state of the gen_server process.\n\n          Reason depends on why the gen_server process is terminating.  If\n          it  is  because  another    callback  function has returned a stop\n          tuple {stop,..}, Reason has the value specified in  that    tuple.\n          If it is because of a failure, Reason is the error reason.\n\n          If  the  gen_server process is part of a supervision tree and is\n          ordered by its supervisor to terminate, this function is    called\n          with Reason=shutdown if the following conditions apply:\n\n        * The gen_server process has been set to trap exit signals.\n\n        * The  shutdown strategy as defined in the child specification\n          of the supervisor is an integer  time-out  value,  not  bru\n          tal_kill.\n\n          Even  if    the  gen_server  process  is not part of a supervision\n          tree, this function is called if it receives an  'EXIT'  message\n          from its parent. Reason is the same as in the 'EXIT' message.\n\n          Otherwise, the gen_server process terminates immediately.\n\n          Notice  that  for  any  other  reason  than normal, shutdown, or\n          {shutdown,Term}, the gen_server process is assumed to  terminate\n          because  of  an  error  and  an  error  report  is  issued using\n          error_logger:format/2.\n\nSEE ALSO\n       gen_event(3erl),   gen_fsm(3erl),   gen_statem(3erl),   proc_lib(3erl),\n       supervisor(3erl), sys(3erl)\n\nEricsson AB              stdlib 3.1              gen_server(3erl)\n",
-			"settings":
-			{
-				"buffer_size": 27685,
-				"line_ending": "Unix",
-				"name": "[MAN] gen_server - Erlang",
-				"read_only": true,
-				"scratch": true
-			}
-		},
-		{
-			"contents": "{\n  \"awards\": [],\n  \"basics\": {\n    \"name\": \"Jónatan Pétursson\",\n    \"label\": \"Programmer\",\n    \"picture\": \"http://i.imgur.com/CGGfpFF.jpg\",\n    \"email\": \"jonatan.petur@gmail.com\",\n    \"phone\": \"+46760760094\",\n    \"website\": \"jonatanpetur.com\",\n    \"summary\": \"Icelandic computer programmer living in Gothenburg, Sweden. Spent the last 2 years working as a solo developer building XML validation software for Midran, solving both software architecture problems as well as helping the company set up a scalable systems architecture based on Amazon AWS.\",\n    \"location\": {\n      \"address\": \"Welandergatan 48\",\n      \"postalCode\": \"416 56\",\n      \"city\": \"Göteborg\",\n      \"countryCode\": \"SV\",\n      \"region\": \"Västra Götaland\"\n    },\n    \"profiles\": []\n  },\n  \"education\": [\n    {\n      \"courses\": [],\n      \"gpa\": \"\",\n      \"endDate\": \"2018\",\n      \"startDate\": \"2015\",\n      \"studyType\": \"Software Engineering and Management\",\n      \"area\": \"Gothenburg, Sweden\",\n      \"institution\": \"Gothenburg University | Chalmers\"\n    },\n    {\n      \"courses\": [],\n      \"gpa\": \"\",\n      \"endDate\": \"2013\",\n      \"startDate\": \"2009\",\n      \"studyType\": \"Programming and Systems Administrations\",\n      \"area\": \"Reykjavik, Iceland\",\n      \"institution\": \"Tækniskólinn Technical College\"\n    }\n  ],\n  \"interests\": [\n    {\n      \"keywords\": [\n        \"Arduino\",\n        \"Raspberry Pi\"\n      ],\n      \"name\": \"Electronics tinkering\"\n    }\n  ],\n  \"languages\": [\n    {\n      \"fluency\": \"Native\",\n      \"language\": \"Icelandic\"\n    },\n    {\n      \"fluency\": \"Fluent\",\n      \"language\": \"Swedish\"\n    },\n    {\n      \"fluency\": \"Fluent\",\n      \"language\": \"English\"\n    }\n  ],\n  \"publications\": [],\n  \"references\": [],\n  \"skills\": [\n    {\n      \"keywords\": [\n        \"PHP\",\n        \"Laravel\",\n        \"Javascript & JQuery\"\n      ],\n      \"level\": \"\",\n      \"name\": \"Web Development\"\n    },\n    {\n      \"keywords\": [\n        \"Schematron\",\n        \"XSLT\",\n        \"XPath\"\n      ],\n      \"level\": \"\",\n      \"name\": \"XML\"\n    },\n    {\n      \"keywords\": [\n        \"Debian\",\n        \"AWS\"\n      ],\n      \"level\": \"\",\n      \"name\": \"Systems administration\"\n    },\n    {\n      \"keywords\": [\n        \"Java\",\n        \"C#\"\n      ],\n      \"level\": \"\",\n      \"name\": \"Other\"\n    }\n  ],\n  \"volunteer\": [],\n  \"work\": [\n    {\n      \"highlights\": [],\n      \"summary\": \"Worked as the only developer making an XML business document validator, helping various companies and governmental institutes save time on the integration of new customers.\",\n      \"endDate\": \"\",\n      \"startDate\": \"2014\",\n      \"website\": \"midran.com\",\n      \"position\": \"Developer\",\n      \"company\": \"Midran ltd\"\n    }\n  ]\n}",
-			"settings":
-			{
-				"buffer_size": 2657,
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "src/baldr_message_handler.erl",
-			"settings":
-			{
-				"buffer_size": 4121,
-				"encoding": "UTF-8",
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"settings":
-			{
-				"buffer_size": 0,
-				"line_ending": "Unix"
-			}
 		}
 	],
 	"build_system": "",
@@ -426,10 +447,22 @@
 	"build_varint": "",
 	"command_palette":
 	{
-		"height": 232.0,
-		"last_filter": "json",
+		"height": 392.0,
+		"last_filter": "",
 		"selected_items":
 		[
+			[
+				"git com",
+				"Git: Commit"
+			],
+			[
+				"git add a",
+				"Git: Add All"
+			],
+			[
+				"git commi",
+				"Git: Commit"
+			],
 			[
 				"json",
 				"Pretty JSON: Format (Pretty Print) JSON"
@@ -627,13 +660,25 @@
 	[
 		"/home/jpp/projects/erlang/baldr-rpi",
 		"/home/jpp/projects/erlang/baldr-rpi/c_src",
+		"/home/jpp/projects/erlang/baldr-rpi/priv",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts",
 		"/home/jpp/projects/erlang/baldr-rpi/src"
 	],
 	"file_history":
 	[
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_discovery_handler.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_rpi.app.src",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_light.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_message_handler.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_lamp.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_rpi_app.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_lamp_text.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/rebar.config",
+		"/home/jpp/projects/erlang/baldr-rpi/config.txt",
+		"/home/jpp/projects/erlang/baldr-rpi/scripts/run.sh",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_lamp_ws281x.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_gen_server.erl",
+		"/home/jpp/projects/erlang/baldr-rpi/c_src/ws281x_nif.c",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/test.sh",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/test_message_off.json",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/test_message_white.json",
@@ -648,27 +693,19 @@
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/run_nif.sh",
 		"/home/jpp/projects/erlang/baldr-rpi/erl_crash.dump",
 		"/home/jpp/projects/erlang/baldr-rpi/deps/rpi_ws281x/SConscript",
-		"/home/jpp/projects/erlang/baldr-rpi/c_src/ws281x_nif.c",
-		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_light.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/deps/rpi_ws281x/SConstruct",
 		"/home/jpp/projects/erlang/baldr-rpi/deps/rpi_ws281x/python/examples/strandtest.py",
-		"/home/jpp/projects/erlang/baldr-rpi/config.txt",
-		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_rpi.app.src",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_lamp_gpio.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/src/pwm.beam",
 		"/home/jpp/projects/erlang/baldr-rpi/src/pwm.erl",
 		"/home/jpp/projects/erlang/baldr_rpi/src/baldr_lamp_pwm.erl",
 		"/home/jpp/projects/erlang/baldr_rpi/scripts/test.sh",
 		"/home/jpp/projects/erlang/baldr-rpi/ebin/pwm.beam",
-		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_message_handler.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/test_message_color.json",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/test_message.json",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/test_message_room.json",
 		"/home/jpp/projects/erlang/baldr-rpi/scripts/test_message_state.json",
 		"/home/jpp/projects/erlang/baldr-rpi/consfig.txt",
-		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_lamp_text.erl",
-		"/home/jpp/projects/erlang/baldr-rpi/scripts/run.sh",
-		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_gen_server.erl",
 		"/home/jpp/.config/sublime-text-3/Packages/Default/font.py",
 		"/home/jpp/cow",
 		"/home/jpp/projects/erlang/baldr-rpi/.gitignore",
@@ -756,10 +793,7 @@
 		"/media/jpp/202638e1-4ce4-45df-9a00-ad725c2537bb/boot/config.txt",
 		"/media/jpp/boot/config.txt",
 		"/tmp/test",
-		"/var/webapps/validex/backend/log/log_2016-08-26.txt",
-		"/media/jpp/boot/cmdline.txt",
-		"/media/jpp/boot/fullpageos-network.txt",
-		"/media/jpp/boot/fullpagedashboard.txt"
+		"/var/webapps/validex/backend/log/log_2016-08-26.txt"
 	],
 	"find":
 	{
@@ -778,6 +812,13 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"substitute",
+			"replace",
+			"index",
+			"State",
+			"erl ",
+			"application",
+			"applicaiton",
 			"set_lamp",
 			"start_link",
 			"sleep",
@@ -898,14 +939,7 @@
 			"gvalues",
 			"assert",
 			"put",
-			"\t\t.",
-			"OrientedPoint",
-			"\\n",
-			" \\\\\\n",
-			" /home/jpp/svn/openslam/gmapping/trunk",
-			"accountingCustomer",
-			"report",
-			"allow"
+			"\t\t."
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -913,6 +947,7 @@
 		"regex": false,
 		"replace_history":
 		[
+			"Light",
 			"handle_args",
 			"ws281x_nif",
 			"hex_to_dec",
@@ -947,116 +982,29 @@
 	"groups":
 	[
 		{
-			"selected": 3,
+			"selected": 0,
 			"sheets":
 			[
 				{
 					"buffer": 0,
-					"file": "rebar.config",
+					"file": "src/baldr_message_handler.erl",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 570,
+						"buffer_size": 4745,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								8,
-								8
+								735,
+								735
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Sublime-Erlang/Erlang Expression.tmLanguage",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 5,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "src/baldr_lamp_text.erl",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 266,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								266,
-								266
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 2,
-					"type": "text"
-				},
-				{
-					"buffer": 2,
-					"file": "c_src/ws281x_nif.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 2043,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1580,
-								1580
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 157.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "src/baldr_light.erl",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 2320,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								729,
-								729
-							]
-						],
-						"settings":
-						{
+							"spell_check": true,
 							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage",
 							"translate_tabs_to_spaces": false
 						},
@@ -1068,115 +1016,33 @@
 					"type": "text"
 				},
 				{
-					"buffer": 4,
+					"buffer": 1,
+					"file": "c_src/ws281x_nif.c",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 27685,
+						"buffer_size": 2043,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								3292,
-								3292
+								2043,
+								2043
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Erlyman/Erlang Manual.tmLanguage",
-							"tab_size": 32
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
 						},
-						"translation.x": 0.0,
-						"translation.y": 1344.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 5,
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 2657,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1829,
-								1829
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/JavaScript/JSON.tmLanguage"
-						},
-						"translation.x": 0.0,
-						"translation.y": 882.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 6,
-					"type": "text"
-				},
-				{
-					"buffer": 6,
-					"file": "src/baldr_message_handler.erl",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 4121,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								2998,
-								2998
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage",
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 409.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 4,
-					"type": "text"
-				},
-				{
-					"buffer": 7,
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 0,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								0,
-								0
-							]
-						],
-						"settings":
-						{
-							"default_dir": "/home/jpp/projects/erlang/baldr-rpi/src",
-							"syntax": "Packages/Text/Plain text.tmLanguage"
-						},
-						"translation.x": 0.0,
+						"translation.x": -0.0,
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 7,
+					"stack_index": 1,
 					"type": "text"
 				}
 			]
@@ -1225,6 +1091,10 @@
 	{
 		"height": 118.0
 	},
+	"output.unsaved_changes":
+	{
+		"height": 118.0
+	},
 	"pinned_build_system": "Packages/User/baldr-rpi.sublime-build",
 	"project": "baldr-rpi.sublime-project",
 	"replace":
@@ -1267,7 +1137,7 @@
 	"show_open_files": true,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 248.0,
+	"side_bar_width": 193.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{
