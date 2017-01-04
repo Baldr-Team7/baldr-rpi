@@ -4,12 +4,36 @@
 		"selected_items":
 		[
 			[
-				"light_inf",
-				"light_info_to_smart_mirror_json"
+				"list",
+				"list_to_binary"
 			],
 			[
 				"Lig",
-				"LightInfo"
+				"LightID"
+			],
+			[
+				"pres",
+				"prescence_topic"
+			],
+			[
+				"Clei",
+				"clientId"
+			],
+			[
+				"Sm",
+				"SmosTopic"
+			],
+			[
+				"Snes",
+				"SensorJson"
+			],
+			[
+				"ligh",
+				"light_info_to_sensor_json"
+			],
+			[
+				"light_inf",
+				"light_info_to_smart_mirror_json"
 			],
 			[
 				"bald",
@@ -236,10 +260,6 @@
 				"hex_to_color"
 			],
 			[
-				"list",
-				"list_to_binary"
-			],
-			[
 				"dec",
 				"dec_to_hex"
 			],
@@ -254,10 +274,6 @@
 			[
 				"B",
 				"baldr_message_handler"
-			],
-			[
-				"ligh",
-				"light_info_to_baldr_json"
 			],
 			[
 				"Info",
@@ -420,22 +436,10 @@
 	"buffers":
 	[
 		{
-			"contents": "-module(baldr_message_handler).\n-export([start_link/5, set_room_topic/2, update_info/2, light_info_to_baldr_json/1]).\n\n-record(light, {id, name, state=off, color={color, 255, 255, 255}, room, lamp}).\n\nhome_topic(H)-> list_to_binary([<<\"lightcontrol/home/\">>,H]).\nroom_topic(H, R)-> list_to_binary([home_topic(H), <<\"/room/\">>, R, <<\"/commands\">>]).\nlight_topic(H, L)-> list_to_binary([home_topic(H), <<\"/light/\">>, L]).\nlight_info_topic(H, L)-> list_to_binary([light_topic(H,L), <<\"/info\">>]).\nlight_command_topic(H, L)-> list_to_binary([light_topic(H,L), <<\"/commands\">>]).\nsmos_topic(H, U, L) -> \n\nstart_link({host, Host}, {port, Port}, {light_controller, LightPid}, {home_id, HomeID}, {light_id, LightID}) ->\n\t%% connect to broker\n\tRoomTopic  = undefined,\n\tLightInfoTopic = light_info_topic(HomeID, LightID),\n\tLightCommandTopic = light_command_topic(HomeID, LightID),\n\t\n\tspawn_link(fun () ->\n\t\t{ok, C} = emqttc:start_link([{host, Host}, {port, Port}, {logger, info}, {keepalive, 0}]),\n\t\temqttc:subscribe(C, LightCommandTopic, qos1),\n\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, HomeID, RoomTopic, LightInfoTopic, LightCommandTopic}) \n\tend).\n\nserve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic}) ->\n\treceive\n\t\t{publish, Topic, Payload} ->\n\t\t\temqttc:publish(C, <<\"baldr-log\">>, list_to_binary([ \"Received message from \", Topic, \" : \", Payload])), \n\t\t\t{Message} = jiffy:decode(Payload),\n\n\t\t\tcase proplists:get_value(<<\"protocolName\">>, Message) of\n\t\t\t\t<<\"baldr\">> -> handle_baldr_message( LightPid, Message );\n\t\t\t\t_ -> default\n\t\t\tend,\n\t\t\t\t\t\n\t\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic});\n\n\t\t{baldr_mh_set_room_topic, Pid, R} ->\n\t\t\tcase RoomTopic of\n\t\t\t\tundefined -> void;\n\t\t\t\tRT -> emqttc:unsubscribe(C, RT)\n\t\t\tend,\n\n\t\t\tNewRoomTopic = room_topic(Home, R),\n\t\t\temqttc:subscribe(C, NewRoomTopic, qos1),\n\n\t\t\t%Pid ! {baldr_mh_set_room_topic_r, self()},\n\t\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, Home, NewRoomTopic, LightInfoTopic, LightCommandTopic});\n\n\t\t{baldr_mh_update_info, Pid, Info} ->\n\t\t\temqttc:publish(C, LightInfoTopic, light_info_to_baldr_json(Info), [{retain, true}]),\n\t\t\temqttc:publish(C, )\n\t\t\tserve({emqtt, C}, {light_controller, LightPid}, {state, Home, RoomTopic, LightInfoTopic, LightCommandTopic});\n\t\t\n\t\t{baldr_mh_stop, Pid} -> \n\t\t\tPid ! {baldr_mh_stop_r, self()}\n\tend.\n\nhandle_baldr_message( _,    [] ) -> default;\nhandle_baldr_message( LPid, [{<<\"lightCommand\">>, {Command}}|_] ) -> executeCommand( LPid, Command );\nhandle_baldr_message( LPid, [_|T] ) -> handle_baldr_message( LPid, T ).\n\nexecuteCommand(C, Params) -> executeCommand(C, Params, []).\nexecuteCommand(C, [Param | T], Args) -> \n\t%translate param to argument\n\tcase Param of \n\t\t{<<\"color\">>, Color} -> Arg = {color, hex_to_color(Color)};\n\t\t{<<\"state\">>, State} -> Arg = {state, binary_to_atom(State, utf8)};\n\t\t{<<\"name\">>, Name} -> Arg   = {name,  Name};\n\t\t{<<\"room\">>, Room} -> Arg   = {room,  Room}\n\tend,\n\t%recurse (next param)\n\texecuteCommand(C, T, [ Arg | Args]);\n%all params processed, execute\nexecuteCommand(C, [], Args) -> baldr_light:set(C, Args).\n\ncolor_to_hex({color, R, G, B}) -> list_to_binary([\"#\", dec_to_hex(R), dec_to_hex(G), dec_to_hex(B)]).\ndec_to_hex(D) -> string:right(integer_to_list(D, 16), 2, $0).\n\nhex_to_color(<<\"#\", R:2/binary, G:2/binary, B:2/binary>>) -> {color, hex_to_dec(R), hex_to_dec(G), hex_to_dec(B)}.\nhex_to_dec(H) -> {ok, [V], []} = io_lib:fread(\"~16u\", binary_to_list(H)), V.\n\n% stop listening at any previous rooms and listen to a new one\nset_room_topic(Pid, R) -> \n\tPid ! {baldr_mh_set_room_topic, self(), R}.\n\t%receive {baldr_mh_set_room_topic_r, Pid} -> ok end.\n\nupdate_info(Pid, Info) ->\n\tPid ! {baldr_mh_update_info, self(), Info}.\n\nlight_info_to_baldr_json(LightInfo) ->\n\tInfoEJSON = {[\n\t\t{<<\"protocolName\">>, <<\"baldr\">>},\n\t\t{<<\"version\">>, 1},\n\t\t{<<\"lightInfo\">>, \n\t\t\t{[\n\t\t\t\t{   <<\"id\">>, \tlist_to_binary(LightInfo#light.id)},\n\t\t\t\t{ <<\"name\">>, \tLightInfo#light.name},\n\t\t\t\t{<<\"state\">>, \tlist_to_binary(atom_to_list(LightInfo#light.state))},\n\t\t\t\t{<<\"color\">>, \tcolor_to_hex(LightInfo#light.color) },\n\t\t\t\t{ <<\"room\">>, \tLightInfo#light.room}\n\t\t\t]}\n\t\t}\n\t]},\n\tjiffy:encode(InfoEJSON).\n\nlight_info_to_smart_mirror_json(LightInfo) -> ok.\n\n\nlight_info_to_sensor_json(LightInfo, HomeID) -> \n\t{Mega, Sec, _} = os:timestamp(),\n\tTimestamp = Mega * 1000000 + Sec,\n\n\tSensorEJSON = {[\n\t\t{<<\"Group\">>, <<\"baldr-home-\", HomeID>>},\n\t\t{<<\"User\">>, <<\"baldr-user\">>},\n\t\t{<<\"Sensor_hub\">>, LightInfo#light.room},\n\t\t{<<\"SensorID\">>, LightInfo#light.name},\n\t\t{<<\"Value\">>, LightInfo#light.state},\n\t\t{<<\"Sensor_unit\">>, <<\"\">>},\n\t\t{<<\"Timestamp\">>, Timestamp}\n\t]},\n\tjiffy:encode(SensorEJSON).\n\n",
-			"file": "src/baldr_message_handler.erl",
-			"file_size": 4698,
-			"file_write_time": 131261034203643032,
+			"file": "src/baldr_rpi.app.src",
 			"settings":
 			{
-				"buffer_size": 4745,
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"file": "c_src/ws281x_nif.c",
-			"settings":
-			{
-				"buffer_size": 2043,
-				"encoding": "UTF-8",
+				"buffer_size": 438,
 				"line_ending": "Unix"
 			}
 		}
@@ -447,10 +451,30 @@
 	"build_varint": "",
 	"command_palette":
 	{
-		"height": 392.0,
-		"last_filter": "",
+		"height": 112.0,
+		"last_filter": "push",
 		"selected_items":
 		[
+			[
+				"push",
+				"Git: Push"
+			],
+			[
+				"commi",
+				"Git: Commit"
+			],
+			[
+				"add",
+				"Git: Add All"
+			],
+			[
+				"git",
+				"Git: Commit"
+			],
+			[
+				"sublimelither",
+				"SublimeLinter: Show All Errors"
+			],
 			[
 				"git com",
 				"Git: Commit"
@@ -466,10 +490,6 @@
 			[
 				"json",
 				"Pretty JSON: Format (Pretty Print) JSON"
-			],
-			[
-				"push",
-				"Git: Push"
 			],
 			[
 				"commit",
@@ -506,10 +526,6 @@
 			[
 				"comm",
 				"Git: Commit"
-			],
-			[
-				"add",
-				"Git: Add All"
 			],
 			[
 				"add a",
@@ -666,10 +682,10 @@
 	],
 	"file_history":
 	[
+		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_message_handler.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_discovery_handler.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_rpi.app.src",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_light.erl",
-		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_message_handler.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_lamp.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_rpi_app.erl",
 		"/home/jpp/projects/erlang/baldr-rpi/src/baldr_lamp_text.erl",
@@ -797,7 +813,7 @@
 	],
 	"find":
 	{
-		"height": 34.0
+		"height": 30.0
 	},
 	"find_in_files":
 	{
@@ -812,6 +828,9 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"asdf",
+			",\\n",
+			":",
 			"substitute",
 			"replace",
 			"index",
@@ -936,17 +955,18 @@
 			"setUpdateDistances",
 			"OrientedPoint",
 			"Oriented",
-			"gvalues",
-			"assert",
-			"put",
-			"\t\t."
+			"gvalues"
 		],
 		"highlight": true,
 		"in_selection": false,
 		"preserve_case": false,
-		"regex": false,
+		"regex": true,
 		"replace_history":
 		[
+			"},\\n",
+			"},",
+			"}, ",
+			"\">>,",
 			"Light",
 			"handle_args",
 			"ws281x_nif",
@@ -987,26 +1007,26 @@
 			[
 				{
 					"buffer": 0,
-					"file": "src/baldr_message_handler.erl",
-					"semi_transient": false,
+					"file": "src/baldr_rpi.app.src",
+					"semi_transient": true,
 					"settings":
 					{
-						"buffer_size": 4745,
+						"buffer_size": 438,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								735,
-								735
+								0,
+								0
 							]
 						],
 						"settings":
 						{
-							"spell_check": true,
-							"syntax": "Packages/Sublime-Erlang/Erlang.tmLanguage",
-							"translate_tabs_to_spaces": false
+							"syntax": "Packages/Sublime-Erlang/Erlang Expression.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
 						"translation.y": 0.0,
@@ -1014,43 +1034,13 @@
 					},
 					"stack_index": 0,
 					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "c_src/ws281x_nif.c",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 2043,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								2043,
-								2043
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/C++/C.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": -0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"type": "text"
 				}
 			]
 		}
 	],
 	"incremental_find":
 	{
-		"height": 22.0
+		"height": 30.0
 	},
 	"input":
 	{
@@ -1089,7 +1079,7 @@
 	},
 	"output.git":
 	{
-		"height": 118.0
+		"height": 100.0
 	},
 	"output.unsaved_changes":
 	{
@@ -1099,7 +1089,7 @@
 	"project": "baldr-rpi.sublime-project",
 	"replace":
 	{
-		"height": 62.0
+		"height": 70.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -1113,12 +1103,12 @@
 	},
 	"select_project":
 	{
-		"height": 0.0,
+		"height": 500.0,
 		"last_filter": "",
 		"selected_items":
 		[
 		],
-		"width": 0.0
+		"width": 380.0
 	},
 	"select_symbol":
 	{
@@ -1137,7 +1127,7 @@
 	"show_open_files": true,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 193.0,
+	"side_bar_width": 231.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{
